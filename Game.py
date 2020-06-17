@@ -483,7 +483,7 @@ class Game:
 			else: #让还在场上的活着的随从返回一个满了的手牌只会让其死亡
 				if target.onBoard:
 					PRINT(self, "%s dies because player's hand is full."%target.name)
-					self.destroy(target)
+					self.destroyMinion(target)
 				return None #如果随从这时已死亡，则满手牌下不会有任何事情发生。
 		elif target.inDeck: #如果目标阶段已经在牌库中了，将一个基础复制置入其手牌。
 			Copy = type(target)(self, target.ID)
