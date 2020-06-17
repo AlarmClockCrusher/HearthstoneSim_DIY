@@ -4047,14 +4047,15 @@ class PandariaGuardian(Minion): #潘达利亚守护者
 	Class, race, name = "Monk", "", "Pandaria Guardian"
 	mana, attack, health = 8, 6, 10
 	index = "Classic~Monk~Minion~8~6~10~None~Pandaria Guardian~Taunt~Quaff"
-	requireTarget, keyWord, description = False, "Taunt", "Taunt. Quaff: Gain 'Can't be targeted by spells or Hero Powers'"
+	requireTarget, keyWord, description = False, "Taunt", "Taunt. Quaff: Gain +2 Health and 'Can't be targeted by spells or Hero Powers'"
 	def effectCanTrigger(self):
 		self.effectViable = (self.Game.ManaHandler.manas[self.ID] == self.mana)
 		
 	def whenEffective(self, target=None, comment="", choice=0, posinHand=-2):
 		if posinHand > -2 and self.Game.ManaHandler.manas[self.ID] == 0:
-			PRINT(self, "Pandaria Guardian's Quaff triggers and gives the minion 'Can't be targeted by spells or Hero Powers'")
+			PRINT(self, "Pandaria Guardian's Quaff triggers and gives the minion +2 Health and 'Can't be targeted by spells or Hero Powers'")
 			self.Game.sendSignal("QuaffTriggered", self.ID, None, None, 0, "")
+			self.buffDebuff(0, 2)
 			self.marks["Evasive"] += 1
 		return None
 		
