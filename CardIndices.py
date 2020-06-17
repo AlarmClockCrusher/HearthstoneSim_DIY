@@ -1699,7 +1699,7 @@ MinionsofCost = {
 			"Classic~Hunter~Minion~2~2~2~Beast~Scavenging Hyena": ScavengingHyena,
 			"Classic~Mage~Minion~2~1~3~None~Mana Wyrm": ManaWyrm,
 			"Classic~Mage~Minion~2~3~2~None~Sorcerer's Apprentice": SorcerersApprentice,
-			"Classic~Monk~Minion~2~2~3~None~Defense Technique Master~Taunt~Quaff": DefenseTechniqueMaster,
+			"Classic~Monk~Minion~2~3~2~None~Defense Technique Master~Taunt~Quaff": DefenseTechniqueMaster,
 			"Classic~Paladin~Minion~2~2~2~None~Argent Protector~Battlecry": ArgentProtector,
 			"Classic~Priest~Minion~2~2~3~None~Kul Tiran Chaplain~Battlecry": KulTiranChaplain,
 			"Classic~Priest~Minion~2~0~5~None~Lightwell": Lightwell,

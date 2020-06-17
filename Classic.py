@@ -3470,8 +3470,8 @@ class Trigger_XuentheWhiteTiger(TriggeronBoard):
 class DefenseTechniqueMaster(Minion): #御术僧师
 	#嘲讽。畅饮：获得‘亡语：本回合中，在使你的英雄获得+3攻击力’
 	Class, race, name = "Monk", "", "Defense Technique Master"
-	mana, attack, health = 2, 2, 3
-	index = "Classic~Monk~Minion~2~2~3~None~Defense Technique Master~Taunt~Quaff"
+	mana, attack, health = 2, 3, 2
+	index = "Classic~Monk~Minion~2~3~2~None~Defense Technique Master~Taunt~Quaff"
 	requireTarget, keyWord, description = False, "Taunt", "Taunt. Quaff: Gain 'Deathrattle: Give your hero +3 Attack this turn'"
 	
 	def effectCanTrigger(self):
