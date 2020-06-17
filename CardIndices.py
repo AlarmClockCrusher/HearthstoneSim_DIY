@@ -115,7 +115,7 @@ Basic_Indices = {"Basic~Neutral~Spell~0~The Coin~Uncollectible": TheCoin,
 				"Basic~Mage~Spell~7~Flamestrike": Flamestrike,
 				#Monk
 				"Basic~Monk~Spell~0~Resuscitate": Resuscitate,
-				"Basic~Monk~Minion~1~0~1~None~Arch of the Temple~Taunt~Battlecry": ArchoftheTemple,
+				"Basic~Monk~Minion~1~0~2~None~Arch of the Temple~Taunt~Battlecry": ArchoftheTemple,
 				"Basic~Monk~Minion~1~1~1~None~Monk Attacker~Rush~Uncollectible": MonkAttacker,
 				"Basic~Monk~Weapon~1~0~4~Cane with a Wine Gourd": CanewithaWineGourd,
 				"Basic~Monk~Minion~1~1~3~None~Monk's Apprentice": MonksApprentice,
@@ -1597,7 +1597,7 @@ MinionsofCost = {
 			"Basic~Neutral~Minion~1~2~1~None~Voodoo Doctor~Battlecry": VoodooDoctor,
 			"Basic~Demon Hunter~Minion~1~2~1~Demon~Shadowhoof Slayer~Battlecry": ShadowhoofSlayer,
 			"Basic~Hunter~Minion~1~1~1~Beast~Timber Wolf": TimberWolf,
-			"Basic~Monk~Minion~1~0~1~None~Arch of the Temple~Taunt~Battlecry": ArchoftheTemple,
+			"Basic~Monk~Minion~1~0~2~None~Arch of the Temple~Taunt~Battlecry": ArchoftheTemple,
 			"Basic~Monk~Minion~1~1~3~None~Monk's Apprentice": MonksApprentice,
 			"Basic~Priest~Minion~1~1~1~None~Psychic Conjurer-Battlecry": PsychicConjurer,
 			"Basic~Warlock~Minion~1~1~3~Demon~Voidwalker~Taunt": Voidwalker,
@@ -2504,7 +2504,7 @@ ClassCards = {
 			},
 			'Monk': {
 				"Basic~Monk~Spell~0~Resuscitate": Resuscitate,
-				"Basic~Monk~Minion~1~0~1~None~Arch of the Temple~Taunt~Battlecry": ArchoftheTemple,
+				"Basic~Monk~Minion~1~0~2~None~Arch of the Temple~Taunt~Battlecry": ArchoftheTemple,
 				"Basic~Monk~Weapon~1~0~4~Cane with a Wine Gourd": CanewithaWineGourd,
 				"Basic~Monk~Minion~1~1~3~None~Monk's Apprentice": MonksApprentice,
 				"Basic~Monk~Spell~1~Shaohao's Protection": ShaohaosProtection,
@@ -3377,4 +3377,3 @@ LegendaryMinions = {
 			"Outlands~Warlock~Minion~6~3~3~None~Keli'dan the Breaker~Battlecry~Legendary": KelidantheBreaker,
 			"Outlands~Warrior~Minion~4~4~4~None~Kargath Bladefist~Rush~Deathrattle~Legendary": KargathBladefist,
 		}
-

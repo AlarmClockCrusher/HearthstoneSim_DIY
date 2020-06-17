@@ -1595,8 +1595,8 @@ class Resuscitate(Spell): #轮回转世
 		
 class ArchoftheTemple(Minion): #禅院的牌坊
 	Class, race, name = "Monk", "", "Arch of the Temple"
-	mana, attack, health = 1, 0, 1
-	index = "Basic~Monk~Minion~1~0~1~None~Arch of the Temple~Taunt~Battlecry"
+	mana, attack, health = 1, 0, 2
+	index = "Basic~Monk~Minion~1~0~2~None~Arch of the Temple~Taunt~Battlecry"
 	requireTarget, keyWord, description = False, "Taunt", "Taunt. Battlecry: Add two 1/1 Monks with Rush to your hand" #嘲讽。战吼：将两张1/1并具有突袭的武僧置入你的手牌
 	
 	def whenEffective(self, target=None, comment="", choice=0, posinHand=-2):

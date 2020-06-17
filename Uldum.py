@@ -619,8 +619,8 @@ class MysteryChoice:
 	name = "Mystery Choice!"
 	description = "Add a random spell to your hand"
 	def __init__(self):
-		self.name = type(this).name
-		self.description = type(this).description
+		self.name = type(self).name
+		self.description = type(self).description
 		
 		
 """Mana 4 cards"""
