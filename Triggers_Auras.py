@@ -1,28 +1,17 @@
 def extractfrom(target, listObject):
-	temp = None
-	for i in range(len(listObject)):
-		if listObject[i] == target:
-			temp = listObject.pop(i)
-			break
-	return temp
+	try: return listObject.pop(listObject.index(target))
+	except: return None
 	
 def fixedList(listObject):
 	return listObject[0:len(listObject)]
 	
-def PRINT(obj, string, *args):
-	if hasattr(obj, "GUI"):
-		GUI = obj.GUI
-	elif hasattr(obj, "Game"):
-		GUI = obj.Game.GUI
-	elif hasattr(obj, "entity"):
-		GUI = obj.entity.Game.GUI
+def PRINT(game, string, *args):
+	if game.GUI:
+		if not game.mode: game.GUI.printInfo(string)
 	else:
-		GUI = None
-	if GUI != None:
-		GUI.printInfo(string)
-	else:
-		print(string)
-		
+		if not game.mode:
+			print("game's guide mode is 0\n", string)
+			
 #对于随从的场上扳机，其被复制的时候所有暂时和非暂时的扳机都会被复制。
 #但是随从返回其额外效果的时候，只有其非暂时场上扳机才会被返回（永恒祭司），暂时扳机需要舍弃。
 class TriggeronBoard:
@@ -44,6 +33,8 @@ class TriggeronBoard:
 			
 	def trigger(self, signal, ID, subject, target, number, comment, choice=0):
 		if self.canTrigger(signal, ID, subject, target, number, comment):
+			if self.entity.Game.withAnimation:
+				self.entity.Game.GUI.triggerBlink(self.entity)
 			self.effect(signal, ID, subject, target, number, comment)
 			
 	def canTrigger(self, signal, ID, subject, target, number, comment, choice=0):
@@ -88,6 +79,8 @@ class TriggerinHand:
 			
 	def trigger(self, signal, ID, subject, target, number, comment, choice=0):
 		if self.canTrigger(signal, ID, subject, target, number, comment):
+			if self.entity.Game.withAnimation:
+				self.entity.Game.GUI.triggerBlink(self.entity)
 			self.effect(signal, ID, subject, target, number, comment)
 			
 	def canTrigger(self, signal, ID, subject, target, number, comment, choice=0):
@@ -159,10 +152,14 @@ class Deathrattle_Minion(TriggeronBoard):
 		self.signals = ["MinionDies", "DeathrattleTriggers"]
 		
 	def trigger(self, signal, ID, subject, target, number, comment, choice=0):
-		if self.entity.Game.playerStatus[self.entity.ID]["Deathrattle Trigger Twice"] > 0:
+		if self.entity.Game.status[self.entity.ID]["Deathrattle x2"] > 0:
 			if self.canTrigger(signal, ID, subject, target, number, comment):
+				if self.entity.Game.withAnimation:
+					self.entity.Game.GUI.triggerBlink(self.entity)
 				self.effect(signal, ID, subject, target, number, comment)
 		if self.canTrigger(signal, ID, subject, target, number, comment):
+			if self.entity.Game.withAnimation:
+				self.entity.Game.GUI.triggerBlink(self.entity)
 			self.effect(signal, ID, subject, target, number, comment)
 			if signal == "MinionDies": #随从通过死亡触发的亡语扳机需要在亡语触发之后注销。
 				self.disconnect()
@@ -171,7 +168,7 @@ class Deathrattle_Minion(TriggeronBoard):
 			#因而只要不在随从列表中就可以在触发死亡扳机后注销，主要适用于死亡扳机的区域移动效果
 			if self.entity not in self.entity.Game.minions[self.entity.ID]:
 				self.disconnect() #如果这个扳机没有实际注册，则注销时无事发生
-				
+			
 	def canTrigger(self, signal, ID, subject, target, number, comment, choice=0):
 		return target == self.entity
 		
@@ -185,10 +182,14 @@ class Deathrattle_Weapon(TriggeronBoard):
 		self.signals = ["WeaponDestroyed"]
 		
 	def trigger(self, signal, ID, subject, target, number, comment, choice=0):
-		if self.entity.Game.playerStatus[self.entity.ID]["Weapon Deathrattle Trigger Twice"] > 0:
+		if self.entity.Game.status[self.entity.ID]["Weapon Deathrattle x2"] > 0:
 			if self.canTrigger(signal, ID, subject, target, number, comment):
+				if self.entity.Game.withAnimation:
+					self.entity.Game.GUI.triggerBlink(self.entity)
 				self.effect(signal, ID, subject, target, number, comment)
 		if self.canTrigger(signal, ID, subject, target, number, comment):
+			if self.entity.Game.withAnimation:
+				self.entity.Game.GUI.triggerBlink(self.entity)
 			self.effect(signal, ID, subject, target, number, comment)
 			
 	def canTrigger(self, signal, ID, subject, target, number, comment, choice=0):
@@ -204,16 +205,20 @@ class SecretTrigger(TriggeronBoard):
 		self.signals = signals
 		
 	def trigger(self, signal, ID, subject, target, number, comment, choice=0):
-		if self.entity.Game.playerStatus[self.entity.ID]["Secret Trigger Twice"] > 0:
+		if self.entity.Game.status[self.entity.ID]["Secrets x2"] > 0:
 			if self.canTrigger(signal, ID, subject, target, number, comment):
+				if self.entity.Game.withAnimation:
+					self.entity.Game.GUI.triggerBlink(self.entity)
 				self.effect(signal, ID, subject, target, number, comment)
 				
 		if self.canTrigger(signal, ID, subject, target, number, comment):
+			if self.entity.Game.withAnimation:
+				self.entity.Game.GUI.triggerBlink(self.entity)
 			self.effect(signal, ID, subject, target, number, comment)
 			
 		self.entity.Game.sendSignal("SecretRevealed", self.entity.Game.turn, self.entity, None, 0, "")
 		self.disconnect()
-		extractfrom(self.entity, self.entity.Game.SecretHandler.secrets[self.entity.ID])
+		extractfrom(self.entity, self.entity.Game.Secrets.secrets[self.entity.ID])
 		
 		
 class Trigger_Echo(TriggerinHand):
@@ -226,7 +231,7 @@ class Trigger_Echo(TriggerinHand):
 		return self.entity.inHand #Echo disappearing should trigger at the end of any turn
 		
 	def effect(self, signal, ID, subject, target, number, comment, choice=0):
-		PRINT(self, "At the end of turn, Echo card %s disappears."%self.entity.name)
+		PRINT(self.entity.Game, "At the end of turn, Echo card %s disappears."%self.entity.name)
 		self.entity.Game.Hand_Deck.extractfromHand(self.entity)
 		
 		
@@ -240,9 +245,9 @@ class Trigger_WorgenShift_FromHuman(TriggerinHand):
 		return self.entity.inHand and ID == self.entity.ID
 		
 	def effect(self, signal, ID, subject, target, number, comment, choice=0):
-		PRINT(self, "At the end of turn, %s transforms for into a worgen"%self.entity.name)
+		PRINT(self.entity.Game, "At the end of turn, %s transforms for into a worgen"%self.entity.name)
 		worgen = self.worgenType(self.entity.Game, self.entity.ID)
-		worgen.statReset(self.entity.health_Enchant, self.entity.attack_Enchant)
+		worgen.statReset(self.entity.health_max, self.entity.attack_Enchant)
 		worgen.identity = self.entity.identity
 		#狼人形态会复制人形态的场上扳机，但是目前没有给随从外加手牌和牌库扳机的机制。
 		#目前不考虑狼人牌在变形前保有的临时攻击力buff
@@ -260,9 +265,9 @@ class Trigger_WorgenShift_FromWorgen(TriggerinHand):
 		return self.entity.inHand and ID == self.entity.ID
 		
 	def effect(self, signal, ID, subject, target, number, comment, choice=0):
-		PRINT(self, "At the end of turn, %s transforms for into a worgen"%self.entity.name)
+		PRINT(self.entity.Game, "At the end of turn, %s transforms for into a worgen"%self.entity.name)
 		human = self.humanType(self.entity.Game, self.entity.ID)
-		human.statReset(self.entity.health_Enchant, self.entity.attack_Enchant)
+		human.statReset(self.entity.health_max, self.entity.attack_Enchant)
 		human.identity = self.entity.identity
 		#狼人形态会复制人形态获得的场上扳机，但是目前没有给随从外加手牌和牌库扳机的机制。
 		#目前不考虑狼人牌在变形前保有的临时攻击力buff
@@ -281,6 +286,8 @@ class QuestTrigger(TriggeronBoard):
 		
 	def trigger(self, signal, ID, subject, target, number, comment, choice=0):
 		if self.canTrigger(signal, ID, subject, target, number, comment):
+			if self.entity.Game.withAnimation:
+				self.entity.Game.GUI.triggerBlink(self.entity)
 			self.effect(signal, ID, subject, target, number, comment)
 			
 			
@@ -394,7 +401,7 @@ class BuffAura_Dealer_Adjacent(AuraDealer_toMinion):
 		for minion, aura_Receiver in fixedList(self.auraAffected):
 			aura_Receiver.effectClear()
 		#Find adjacent minions to self.entity, then try to register them.
-		for minion in self.entity.Game.findAdjacentMinions(self.entity)[0]:
+		for minion in self.entity.Game.adjacentMinions2(self.entity)[0]:
 			self.applies(minion)
 			
 	def applies(self, subject):
@@ -403,7 +410,7 @@ class BuffAura_Dealer_Adjacent(AuraDealer_toMinion):
 			aura_Receiver.effectStart()
 			
 	def auraAppears(self):
-		for minion in self.entity.Game.findAdjacentMinions(self.entity)[0]:
+		for minion in self.entity.Game.adjacentMinions2(self.entity)[0]:
 			self.applies(minion)
 			
 		#Only need to handle minions that appear. Them leaving/silenced will be handled by the BuffAura_Receiver object.
@@ -592,7 +599,7 @@ class MechsHaveRush(AuraDealer_toMinion):
 			aura_Receiver.effectStart()
 			
 	def auraAppears(self):
-		PRINT(self, "Dr. Boom. Mad Genius' aura starts it's effect.")
+		PRINT(self.entity.Game, "Dr. Boom. Mad Genius' aura starts it's effect.")
 		for minion in self.Game.minionsonBoard(self.ID):
 			self.applies(minion)
 			
