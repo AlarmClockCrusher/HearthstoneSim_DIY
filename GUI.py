@@ -1,11 +1,30 @@
+X, Y = 1000, 750
+card_x, card_y = int(0.00818*X), int(0.00625*Y) #XY为（1100， 800）时对应（9，5）
+CARD_X, CARD_Y = int(0.073*X), int(0.15*Y) #XY为（1100，800）时对应80, 120#有Image的按钮的大小由这个来确定
+SecretIconSize = int(0.08125*Y) #Y为800时对应65
+ManaCrystalSize = int(0.02*Y)
+HeroIconSize = int(0.1*Y) #XY为（1100，800）时对应80，80
+Hand_X, Hand_Y = int(0.064*X), int(0.0875*Y) #XY为（1100，800）时对应70，100
+Board_X, Board_Y = int(0.118*X), int(0.02375*Y)
+boardColor = "peach puff"
+Hero1Pos = (0.51*X, Y-0.24*Y)
+Hero2Pos = (0.51*X, 0.24*Y)
+Weapon1Pos = (0.42*X, Y-0.24*Y)
+Weapon2Pos = (0.42*X, 0.24*Y)
+HeroPower1Pos = (0.6*X, Y-0.24*Y)
+HeroPower2Pos = (0.6*X, 0.24*Y)
+
+
+
 import tkinter as tk
 from Game import *
-from Basic import ClassDict
-from CardPools import cardPool, MinionsofCost, RNGPools
+
+from CardPools import Classes, ClassesandNeutral, ClassDict, cardPool, MinionsofCost, RNGPools
+
 from Code2CardList import *
-import PIL.Image
-import PIL.ImageTk
+import PIL.Image, PIL.ImageTk
 import os, inspect, time
+import pickle
 
 def fixedList(listObject):
 	return listObject[0:len(listObject)]
@@ -51,25 +70,17 @@ def findPicFilepath_FullImg(card):
 	filepath = path+"%s.png"%name
 	return filepath
 	
+def pickleObj2Str(obj):
+	s = str(pickle.dumps(obj, 0).decode())
+	return s.replace("\n", "123")
 	
-X, Y = 1000, 750
-card_x, card_y = int(0.00818*X), int(0.00625*Y) #XY为（1100， 800）时对应（9，5）
-CARD_X, CARD_Y = int(0.073*X), int(0.15*Y) #XY为（1100，800）时对应80, 120#有Image的按钮的大小由这个来确定
-SecretIconSize = int(0.08125*Y) #Y为800时对应65
-ManaCrystalSize = int(0.02*Y)
-HeroIconSize = int(0.1*Y) #XY为（1100，800）时对应80，80
-Hand_X, Hand_Y = int(0.064*X), int(0.0875*Y) #XY为（1100，800）时对应70，100
-Board_X, Board_Y = int(0.118*X), int(0.02375*Y)
-boardColor = "peach puff"
-Hero1Pos = (0.51*X, Y-0.24*Y)
-Hero2Pos = (0.51*X, 0.24*Y)
-Weapon1Pos = (0.42*X, Y-0.24*Y)
-Weapon2Pos = (0.42*X, 0.24*Y)
-HeroPower1Pos = (0.6*X, Y-0.24*Y)
-HeroPower2Pos = (0.6*X, 0.24*Y)
-
-HeroList = ["Demon Hunter", "Druid", "Hunter", "Mage", "Monk", "Paladin", "Priest", "Rogue", "Shaman", "Warlock", "Warrior"]
-
+def unpickleStr2Obj(s):
+	s = s.replace("123", "\n")
+	byteS = bytes(s.encode())
+	obj = pickle.loads(byteS)
+	return obj
+	
+	
 
 class CardLabel(tk.Label):
 	def plot(self, x=11, y=11, anchor='c'):
@@ -91,7 +102,6 @@ class HandButton(tk.Button): #Cards that are in hand. 目前而言只有一张�
 				self.GUI.resolveMove(card, self, selectedSubject) #把一张牌，这个牌的按钮和这个牌的信息传入resolveMove
 			else:
 				self.GUI.cancelSelection()
-				
 		else:
 			self.selected = 0
 			self.configure(bg="red")
@@ -100,6 +110,7 @@ class HandButton(tk.Button): #Cards that are in hand. 目前而言只有一张�
 	def rightClick(self, event):
 		self.GUI.cancelSelection()
 		self.card.STATUSPRINT()
+		self.GUI.updateCardinResolution(self.card)
 		
 	def plot(self, x=11, y=11, anchor='c'):
 		self.x, self.y, self.anchor = x, y, anchor
@@ -115,12 +126,12 @@ class HandButton(tk.Button): #Cards that are in hand. 目前而言只有一张�
 		
 		if self.card.type == "Minion":
 			attack, attack_Enchant, health, health_max, health_upper = self.card.attack, self.card.attack_Enchant, self.card.health, self.card.health_max, self.card.health_upper
-			attColor = "green" if attack_Enchant > self.card.attack_0 else "black"
+			attColor = "green3" if attack_Enchant > self.card.attack_0 else "black"
 			lbl_attack = CardLabel(text=str(attack), bg="white", fg=attColor, font=("Yahei", 11, "bold"))
 			lbl_attack.plot(x=x-0.39*CARD_X, y=y+0.39*CARD_Y, anchor='c')
 			self.labels.append(lbl_attack)
 			if health >= health_upper:
-				healthColor = "black" if health_max <= self.card.health_0 else "green"
+				healthColor = "black" if health_max <= self.card.health_0 else "green3"
 			else:
 				healthColor = "red"
 			lbl_health = CardLabel(text=str(health), bg="white", fg=healthColor, font=("Yahei", 11, "bold"))
@@ -140,11 +151,11 @@ class HandButton(tk.Button): #Cards that are in hand. 目前而言只有一张�
 			self.configure(text=text)
 		elif self.card.type == "Weapon":
 			attack, durability = self.card.attack, self.card.durability
-			attColor = "green" if attack > type(self.card).attack else "black"
+			attColor = "green3" if attack > type(self.card).attack else "black"
 			lbl_attack = CardLabel(text=str(attack), bg="white", fg=attColor, font=("Yahei", 11, "bold"))
 			lbl_attack.plot(x=x-0.39*CARD_X, y=y+0.39*CARD_Y, anchor='c')
 			self.labels.append(lbl_attack)
-			durabilityColor = "green" if durability > type(self.card).durability else "black"
+			durabilityColor = "green3" if durability > type(self.card).durability else "black"
 			lbl_durability = CardLabel(text=str(durability), bg="white", fg=durabilityColor, font=("Yahei", 11, "bold"))
 			lbl_durability.plot(x=x+0.39*CARD_X, y=y+0.39*CARD_Y, anchor='c')
 			self.labels.append(lbl_durability)
@@ -177,11 +188,12 @@ class DiscoverCardButton(HandButton):
 				self.configure(bg="white")
 				self.selected = 1
 			else:
-				button.configure(bg="green")
+				button.configure(bg="green3")
 				button.selected = 0
 				
 	def rightClick(self, event):
 		self.card.STATUSPRINT()
+		self.GUI.updateCardinResolution(self.card)
 		
 	#因为DiscoverCardOption是HandButton上面定义的，不用再次定replot
 	def hide(self):
@@ -213,7 +225,7 @@ class DiscoverOptionButton(tk.Button):
 				self.configure(bg="white")
 				self.selected = 1
 			else:
-				button.configure(bg="green")
+				button.configure(bg="green3")
 				button.selected = 0
 				
 	def hide(self):
@@ -241,7 +253,7 @@ class DiscoverHideButton(tk.Button):
 				if type(button) == DiscoverOptionButton or type(button) == DiscoverCardButton:
 					button.hide()
 		else:
-			self.configure(bg="green")
+			self.configure(bg="green3")
 			for button in self.GUI.buttonsDrawn:
 				if type(button) == DiscoverOptionButton or type(button) == DiscoverCardButton:
 					button.replot()
@@ -276,10 +288,10 @@ class BoardButton(tk.Button):
 	def rightClick(self, event):
 		self.GUI.cancelSelection()
 		
-class MulliganButton(HandButton):
+class MulliganButton(tk.Button):
 	def leftClick(self, event):
 		self.selected = 1 - self.selected
-		bgColor = "red" if self.selected == 1 else "green"
+		bgColor = "red" if self.selected == 1 else "green3"
 		self.configure(bg = bgColor)
 		for ID in range(1, 3):
 			for i in range(len(self.card.Game.mulligans[ID])):
@@ -289,6 +301,7 @@ class MulliganButton(HandButton):
 					
 	def rightClick(self, event):
 		self.card.STATUSPRINT()
+		self.GUI.updateCardinResolution(self.card)
 		
 		
 class MinionButton(tk.Button):
@@ -302,6 +315,7 @@ class MinionButton(tk.Button):
 	def rightClick(self, event):
 		self.GUI.cancelSelection()
 		self.card.STATUSPRINT()
+		self.GUI.updateCardinResolution(self.card)
 		
 	def plot(self, x=11, y=11, anchor='c'):
 		self.labels = []
@@ -319,12 +333,12 @@ class MinionButton(tk.Button):
 			self.labels.append(lbl_trigger)
 		if self.card.type == "Minion":
 			attack, attack_Enchant, health, health_max, health_upper = self.card.attack, self.card.attack_Enchant, self.card.health, self.card.health_max, self.card.health_upper
-			attColor = "green" if attack_Enchant > self.card.attack_0 else "black"
+			attColor = "green3" if attack_Enchant > self.card.attack_0 else "black"
 			lbl_attack = CardLabel(text=str(attack), bg="white", fg=attColor, font=("Yahei", 12, "bold"))
 			lbl_attack.plot(x=x-0.42*CARD_X, y=y+0.43*CARD_Y, anchor='c')
 			self.labels.append(lbl_attack)
 			if health >= health_upper:
-				healthColor = "black" if health_max <= self.card.health_0 else "green"
+				healthColor = "black" if health_max <= self.card.health_0 else "green3"
 			else:
 				healthColor = "red"
 			lbl_health = CardLabel(text=str(health), bg="white", fg=healthColor, font=("Yahei", 12, "bold"))
@@ -343,6 +357,7 @@ class HeroButton(tk.Button):
 	def rightClick(self, event):
 		self.GUI.cancelSelection()
 		self.card.STATUSPRINT()
+		self.GUI.updateCardinResolution(self.card)
 		
 	def plot(self, x=11, y=11, anchor='c'):
 		self.labels = []
@@ -371,10 +386,12 @@ class InactionableButton(tk.Button): #休眠物和武器无论左右键都是取
 	def leftClick(self, event):
 		self.GUI.cancelSelection()
 		self.card.STATUSPRINT()
+		self.GUI.updateCardinResolution(self.card)
 		
 	def rightClick(self, event):
 		self.GUI.cancelSelection()
 		self.card.STATUSPRINT()
+		self.GUI.updateCardinResolution(self.card)
 		
 	def plot(self, x=11, y=11, anchor='c'):
 		self.labels = []
@@ -388,7 +405,7 @@ class InactionableButton(tk.Button): #休眠物和武器无论左右键都是取
 				lbl_trigger.plot(x=x, y=y+0.39*CARD_Y, anchor='c')
 				self.labels.append(lbl_trigger)
 			attack, durability = self.card.attack, self.card.durability
-			attColor = "green" if attack > type(self.card).attack else "black"
+			attColor = "green3" if attack > type(self.card).attack else "black"
 			lbl_attack = CardLabel(text=str(attack), bg="white", fg=attColor, font=("Yahei", 11, "bold"))
 			lbl_attack.plot(x=x-0.42*CARD_X, y=y+0.39*CARD_Y, anchor='c')
 			self.labels.append(lbl_attack)
@@ -417,10 +434,12 @@ class HeroPowerButton(tk.Button): #For Hero Powers that are on board
 			self.GUI.printInfo("Hero Power can't be selected")
 			self.GUI.cancelSelection()
 			self.card.STATUSPRINT()
+			self.GUI.updateCardinResolution(self.card)
 			
 	def rightClick(self, event):
 		self.GUI.cancelSelection()
 		self.card.STATUSPRINT()
+		self.GUI.updateCardinResolution(self.card)
 		
 	def plot(self, x=11, y=11, anchor='c'):
 		self.labels = []
@@ -448,11 +467,23 @@ class MulliganFinishButton(tk.Button):
 		self.GUI.printInfo("\tPlayer 2 will replace the following cards {}".format(indicesCards2))
 		self.Game.Hand_Deck.mulligan(indicesCards1, indicesCards2)
 		self.GUI.UI = 0
+		self.GUI.gameBackup = self.GUI.Game.copyGame()[0]
 		self.GUI.update()
 		
 class TurnEndButton(tk.Button):
 	def respond(self):
 		self.GUI.resolveMove(None, self, "TurnEnds")
+		moves, gameGuides = self.GUI.Game.moves, self.GUI.Game.fixedGuides
+		s = pickleObj2Str(moves)+"||"+pickleObj2Str(gameGuides)
+		self.GUI.Game.moves, self.GUI.Game.fixedGuides, self.GUI.Game.guides = [], [], []
+		moves, gameGuides = s.split("||") #is a string
+		moves = unpickleStr2Obj(moves)
+		gameGuides = unpickleStr2Obj(gameGuides)
+		self.GUI.Game = self.GUI.gameBackup
+		self.GUI.Game.evolvewithGuide(moves, gameGuides)
+		self.GUI.gameBackup = self.GUI.Game.copyGame()[0]
+		
+		self.GUI.update()
 		
 class ClassConfirmationButton(tk.Button):
 	def respond(self):
@@ -476,10 +507,19 @@ class ClassConfirmationButton(tk.Button):
 					decksCorrect[ID] = False
 		if decksCorrect[1] and decksCorrect[2]:
 			self.GUI.Game = Game(self.GUI)
+			for card in decks[1]:
+				if card.Class != "Neutral":
+					hero_1 = ClassDict[card.Class]
+					break
+			for card in decks[2]:
+				if card.Class != "Neutral":
+					hero_2 = ClassDict[card.Class]
+					break
 			self.GUI.Game.initialize(cardPool, MinionsofCost, RNGPools, hero_1, hero_2, decks[1], decks[2])
 			self.GUI.Game.mode, self.GUI.Game.withAnimation = 0, True
-			self.GUI.posMulligans = {1:[(70+i*2*111, Y-120) for i in range(len(self.GUI.Game.mulligans[1]))],
-								2:[(70+i*2*111, 120) for i in range(len(self.GUI.Game.mulligans[2]))]}
+			self.GUI.Game.Classes, self.GUI.Game.ClassesandNeutral = Classes, ClassesandNeutral
+			self.GUI.posMulligans = {1:[(100+i*2*111, Y-140) for i in range(len(self.GUI.Game.mulligans[1]))],
+								2:[(100+i*2*111, 140) for i in range(len(self.GUI.Game.mulligans[2]))]}
 			self.destroy()
 			for widget in self.GUI.deckImportPanel.widgets:
 				widget.destroy()
@@ -503,8 +543,8 @@ class GUI:
 		self.choice, self.UI = 0, -1 #起手调换
 		self.position = -1
 		self.discover = None
+		self.gameBackup = None
 		self.window = tk.Tk()
-		btnTurnEnd = None
 		self.GamePanel = tk.Frame(master=self.window, width=X, height=Y, bg="black")
 		self.GamePanel.pack(fill=tk.Y, side=tk.LEFT) #place(relx=0, rely=0)
 		self.outPutPanel = tk.Frame(master=self.window, width=0.02*X, height=0.3*Y, bg="cyan")
@@ -521,13 +561,13 @@ class GUI:
 		scrollbar_ver.pack(fill=tk.Y, side=tk.RIGHT)
 		scrollbar_hor = tk.Scrollbar(master=self.outPutPanel, orient="horizontal")
 		scrollbar_hor.pack(fill=tk.X, side=tk.BOTTOM)
-		self.output = tk.Listbox(master=self.outPutPanel, xscrollcommand=scrollbar_hor.set, yscrollcommand=scrollbar_ver.set, width=50, height=20, bg="white", font=("Courier", 13))
+		self.output = tk.Listbox(master=self.outPutPanel, xscrollcommand=scrollbar_hor.set, yscrollcommand=scrollbar_ver.set, width=35, height=9, bg="white", font=("Courier", 13))
 		self.output.pack(side=tk.LEFT)
 		scrollbar_hor.configure(command=self.output.xview)
 		scrollbar_ver.configure(command=self.output.yview)
 		
 		self.text = tk.Entry(master=self.inputPanel, font=("Yahei", 12))
-		lbl_Input = tk.Label(master=self.inputPanel, text="Command Input", font=("Courier", 15))
+		lbl_Input = tk.Label(master=self.inputPanel, text="Wish for a card", font=("Courier", 15))
 		
 		lbl_Input.pack(fill=tk.X)
 		self.text.pack(fill=tk.X, side=tk.TOP)
@@ -536,8 +576,8 @@ class GUI:
 		#START in DECKIMPORTPANEL
 		#Drop down option menu for the first hero
 		hero1 = tk.StringVar(self.deckImportPanel)
-		hero1.set(HeroList[0])
-		hero1Opt = tk.OptionMenu(self.deckImportPanel, hero1, *HeroList)
+		hero1.set(list(ClassDict.keys())[0])
+		hero1Opt = tk.OptionMenu(self.deckImportPanel, hero1, *list(ClassDict.keys()))
 		hero1Opt.config(width=15, font=("Yahei", 15))
 		hero1Opt["menu"].config(font=("Yahei", 15))
 		hero1Opt.pack()#place(x=60, y=60)
@@ -549,8 +589,8 @@ class GUI:
 		
 		##Drop down option menu for the second hero
 		hero2 = tk.StringVar(self.deckImportPanel)
-		hero2.set(HeroList[0])
-		hero2Opt = tk.OptionMenu(self.deckImportPanel, hero2, *HeroList)
+		hero2.set(list(ClassDict.keys())[0])
+		hero2Opt = tk.OptionMenu(self.deckImportPanel, hero2, *list(ClassDict.keys()))
 		hero2Opt.config(width=15, font=("Yahei", 15))
 		hero2Opt["menu"].config(font=("Yahei", 15))
 		hero2Opt.pack()
@@ -561,7 +601,7 @@ class GUI:
 		self.deckImportPanel.widgets.append(self.hero2Label)
 		
 		#Confirm button to start the game
-		btnClassConfirm = ClassConfirmationButton(self.deckImportPanel, bg="green", text="Confirm", font=("Yahei", 15))
+		btnClassConfirm = ClassConfirmationButton(self.deckImportPanel, bg="green3", text="Confirm", font=("Yahei", 15))
 		btnClassConfirm.GUI = self
 		btnClassConfirm.configure(command=btnClassConfirm.respond)
 		btnClassConfirm.pack()
@@ -586,9 +626,7 @@ class GUI:
 		except:
 			self.output.insert(tk.END, "|||||||||||||")
 			self.output.insert(tk.END, "|||||||||||||")
-			self.output.insert(tk.END, "|||||||||||||")
 			self.output.insert(tk.END, "PRINT options is wrong. Continue nonetheless")
-			self.output.insert(tk.END, "|||||||||||||")
 			self.output.insert(tk.END, "|||||||||||||")
 			self.output.insert(tk.END, "|||||||||||||")
 			self.output.see("end")
@@ -651,8 +689,8 @@ class GUI:
 				self.drawMinions()
 				self.drawHeroesWeaponsPowers()
 				self.drawManasHandsDecksSecretsQuests()
-				btnTurnEnd = TurnEndButton(relief=tk.FLAT, master=self.GamePanel, text="Turn End", bg="green", fg="white", width=12, height=2, font=("Yahei", 13, "bold"))
-				btnTurnEnd.Game, btnTurnEnd.GUI, btnTurnEnd.colorOrig = self.Game, self, "green"
+				btnTurnEnd = TurnEndButton(relief=tk.FLAT, master=self.GamePanel, text="Turn End", bg="green3", fg="white", width=12, height=2, font=("Yahei", 13, "bold"))
+				btnTurnEnd.Game, btnTurnEnd.GUI, btnTurnEnd.colorOrig = self.Game, self, "green3"
 				btnTurnEnd.configure(command=btnTurnEnd.respond)
 				btnTurnEnd.place(relx=0.94, rely=0.55 if self.Game.turn == 1 else 0.45, anchor='c')
 				self.buttonsDrawn.append(btnTurnEnd)
@@ -671,18 +709,18 @@ class GUI:
 			for i in range(len(self.posMulligans[ID])):
 				pos = self.posMulligans[ID][i]
 				card = self.Game.mulligans[ID][i]
-				color = "red" if self.mulliganStatus[ID][i] else "green"
+				color = "red" if self.mulliganStatus[ID][i] else "green3"
 				#代表一张起手牌的按钮被按下时会让这个牌对应的mulliganStatus在1和0之间变化
-				img = PIL.Image.open(findPicFilepath(card)).resize((78, 75))
+				img = PIL.Image.open(findPicFilepath_FullImg(card)).resize((210, 280))
 				ph = PIL.ImageTk.PhotoImage(img)
-				btnMulligan = MulliganButton(relief=tk.FLAT, master=self.GamePanel, image=ph, bg=color, width=CARD_X, height=CARD_Y)
+				btnMulligan = MulliganButton(relief=tk.FLAT, master=self.GamePanel, image=ph, bg=color, width=2.5*CARD_X, height=2.3*CARD_Y)
 				btnMulligan.image = ph
 				btnMulligan.Game, btnMulligan.GUI, btnMulligan.card, btnMulligan.selected = self.Game, self, card, 0
 				btnMulligan.bind('<Button-1>', btnMulligan.leftClick)   # bind left mouse click
 				btnMulligan.bind('<Button-3>', btnMulligan.rightClick)   # bind right mouse click
-				btnMulligan.plot(x=pos[0], y=pos[1], anchor='c')
+				btnMulligan.place(x=pos[0], y=pos[1], anchor='c')
 				self.buttonsDrawn.append(btnMulligan)
-		mulliganFinished = MulliganFinishButton(relief=tk.FLAT, master=self.GamePanel, text="Replace Card and\nStart 1st Turn", bg="green", width=13, height=3, font=("Yahei", 12, "bold"))
+		mulliganFinished = MulliganFinishButton(relief=tk.FLAT, master=self.GamePanel, text="Replace Card and\nStart 1st Turn", bg="green3", width=13, height=3, font=("Yahei", 12, "bold"))
 		mulliganFinished.Game, mulliganFinished.GUI = self.Game, self
 		mulliganFinished.configure(command=mulliganFinished.respond)
 		mulliganFinished.place(x=X/2, y=Y/2, anchor='c')
@@ -705,7 +743,7 @@ class GUI:
 						if card.evanescent: color = "blue"
 						elif hasattr(card, "effectViable") and card.effectViable:
 							color = "yellow"
-						else: color = "green"
+						else: color = "green3"
 				pos = self.posHands[ID][i]
 				img = PIL.Image.open(findPicFilepath(card))
 				img = img.resize((int(0.95*Hand_X), int(0.95*Hand_X)))
@@ -723,7 +761,7 @@ class GUI:
 		for ID in range(1, 3):
 			for i in range(len(self.posMinionsDrawn[ID])):
 				pos, minion = self.posMinionsDrawn[ID][i], self.Game.minions[ID][i]
-				color = ("green" if minion.canAttack() else "red") if minion.type == "Minion" else "grey46"
+				color = ("green3" if minion.canAttack() else "red") if minion.type == "Minion" else "grey46"
 				if minion.dead: color = "grey25"
 				elif minion == self.subject: color = "white"
 				elif minion == self.target: color = "cyan2"
@@ -752,7 +790,7 @@ class GUI:
 		for ID in range(1, 3):
 			#Draw hero
 			hero = self.Game.heroes[ID]
-			color = "green" if hero.canAttack() else "red"
+			color = "green3" if hero.canAttack() else "red"
 			if hero == self.subject: color = "white"
 			elif hero == self.target: color = "cyan2"
 			pos = Hero1Pos if ID == 1 else Hero2Pos
@@ -768,7 +806,7 @@ class GUI:
 			self.buttonsDrawn.append(btnHero)
 			#Draw Hero Power
 			heroPower = self.Game.powers[ID]
-			color = "green" if ID == self.Game.turn and heroPower.available() and self.Game.Manas.affordable(heroPower) else "red"
+			color = "green3" if ID == self.Game.turn and heroPower.available() and self.Game.Manas.affordable(heroPower) else "red"
 			pos = HeroPower1Pos if ID == 1 else HeroPower2Pos
 			img = PIL.Image.open(findPicFilepath(heroPower))
 			img = img.resize((int(0.9*HeroIconSize), int(0.9*HeroIconSize)))
@@ -782,7 +820,7 @@ class GUI:
 			self.buttonsDrawn.append(btnHeroPower)
 			#Draw weapon
 			weapon = self.Game.availableWeapon(ID)
-			if weapon != None:
+			if weapon:
 				pos = Weapon1Pos if ID == 1 else Weapon2Pos
 				if weapon.sequence == 0: order = "1st"
 				elif weapon.sequence == 1: order = "2nd"
@@ -804,8 +842,8 @@ class GUI:
 				self.buttonsDrawn.append(btnWeapon)
 				
 	def drawManasHandsDecksSecretsQuests(self):
-		if self.Game.turn == 1: color1, color2 = "green", "red"
-		else: color1, color2 = "red", "green"
+		if self.Game.turn == 1: color1, color2 = "green3", "red"
+		else: color1, color2 = "red", "green3"
 		manaHD = self.Game.Manas
 		for ID in range(1, 3):
 			i = 1
@@ -866,7 +904,7 @@ class GUI:
 				img = PIL.Image.open(findPicFilepath(obj))
 				img = img.resize((int(0.95*SecretIconSize), int(0.95*SecretIconSize)))
 				ph = PIL.ImageTk.PhotoImage(img)
-				color = "green" if ("~~Secret" in obj.index and obj.ID != self.Game.turn) else "red"
+				color = "green3" if ("~~Secret" in obj.index and obj.ID != self.Game.turn) else "red"
 				btnSecretQuest = InactionableButton(self.GamePanel, image=ph, bg=color, height=SecretIconSize, width=SecretIconSize)
 				btnSecretQuest.image = ph
 				btnSecretQuest.bind('<Button-1>', btnSecretQuest.leftClick)
@@ -879,15 +917,15 @@ class GUI:
 		for i in range(len(self.Game.options)):
 			option = self.Game.options[i]
 			pos = (0.2*X+0.125*X*i, 0.4*Y)
-			btnChooseOne = ChooseOneButton(relief=tk.FLAT, master=self.GamePanel, text=self.wrapText(option.description, 8), bg="green", width=card_x, height=card_y, font=("Yahei", 10, "bold"))
-			btnChooseOne.option, btnChooseOne.GUI, btnChooseOne.selected, btnChooseOne.colorOrig = option, self, 0, "green"
+			btnChooseOne = ChooseOneButton(relief=tk.FLAT, master=self.GamePanel, text=self.wrapText(option.description, 8), bg="green3", width=card_x, height=card_y, font=("Yahei", 10, "bold"))
+			btnChooseOne.option, btnChooseOne.GUI, btnChooseOne.selected, btnChooseOne.colorOrig = option, self, 0, "green3"
 			btnChooseOne.configure(command=btnChooseOne.respond)
 			btnChooseOne.plot(x=pos[0], y=pos[1], anchor='c')
 			self.buttonsDrawn.append(btnChooseOne)
 			
 	def updateCardinResolution(self, card):
 		if card:
-			img = PIL.Image.open(findPicFilepath_FullImg(card)).resize((150, 200))
+			img = PIL.Image.open(findPicFilepath_FullImg(card)).resize(((240, 320)))
 			ph = PIL.ImageTk.PhotoImage(img)
 			self.deckImportPanel.lbl_Card.configure(image=ph)
 			self.deckImportPanel.lbl_Card.image = ph
@@ -1148,14 +1186,15 @@ class GUI:
 			else:
 				self.printInfo("You must click an Discover option to continue.")
 				
+				
 	def waitforDiscover(self, info=None):
 		self.UI, self.discover, var = 3, None, tk.IntVar()
 		btnDiscoverConfirm = tk.Button(relief=tk.FLAT, master=self.GamePanel, text="Confirm\nDiscover", bg="lime green", width=10, height=4, font=("Yahei", 12, "bold"))
 		btnDiscoverConfirm.GUI, btnDiscoverConfirm.colorOrig = self, "lime green"
-		btnDiscoverConfirm.configure(command=lambda: var.set(1) if self.discover != None else print())
-		btnDiscoverHide = DiscoverHideButton(relief=tk.FLAT, master=self.GamePanel, text="Hide", bg="green", width=5, height=2, font=("Yahei", 12, "bold"))
+		btnDiscoverConfirm.configure(command=lambda: var.set(1) if self.discover else print())
+		btnDiscoverHide = DiscoverHideButton(relief=tk.FLAT, master=self.GamePanel, text="Hide", bg="green3", width=5, height=2, font=("Yahei", 12, "bold"))
 		btnDiscoverHide.configure(command=btnDiscoverHide.respond)
-		btnDiscoverHide.Game, btnDiscoverHide.GUI, btnDiscoverHide.selected, btnDiscoverHide.colorOrig = self.Game, self, 0, "green"
+		btnDiscoverHide.Game, btnDiscoverHide.GUI, btnDiscoverHide.selected, btnDiscoverHide.colorOrig = self.Game, self, 0, "green3"
 		btnDiscoverHide.place(x=0.82*X, y=0.5*Y, anchor='c')
 		self.buttonsDrawn.append(btnDiscoverHide)
 		for i in range(len(self.Game.options)):
@@ -1165,15 +1204,15 @@ class GUI:
 				img = PIL.Image.open(findPicFilepath(card))
 				img = img.resize((70, 70))
 				ph = PIL.ImageTk.PhotoImage(img)
-				btnDiscover = DiscoverCardButton(relief=tk.FLAT, master=self.GamePanel, image=ph, bg="green", width=CARD_X, height=CARD_Y)
+				btnDiscover = DiscoverCardButton(relief=tk.FLAT, master=self.GamePanel, image=ph, bg="green3", width=CARD_X, height=CARD_Y)
 				btnDiscover.image = ph
 				btnDiscover.bind('<Button-1>', btnDiscover.leftClick)
 				btnDiscover.bind('<Button-3>', btnDiscover.rightClick)
-				btnDiscover.pos, btnDiscover.card, btnDiscover.GUI, btnDiscover.selected, btnDiscover.colorOrig = pos, card, self, 0, "green"
+				btnDiscover.pos, btnDiscover.card, btnDiscover.GUI, btnDiscover.selected, btnDiscover.colorOrig = pos, card, self, 0, "green3"
 			else:
 				option = self.Game.options[i]
-				btnDiscover = DiscoverOptionButton(relief=tk.FLAT, master=self.GamePanel, text=self.wrapText(option.description), bg="green", width=card_x, height=card_y, font=("Yahei", 12, "bold"))
-				btnDiscover.pos, btnDiscover.option, btnDiscover.GUI, btnDiscover.selected, btnDiscover.colorOrig = pos, option, self, 0, "green"
+				btnDiscover = DiscoverOptionButton(relief=tk.FLAT, master=self.GamePanel, text=self.wrapText(option.description), bg="green3", width=card_x, height=card_y, font=("Yahei", 12, "bold"))
+				btnDiscover.pos, btnDiscover.option, btnDiscover.GUI, btnDiscover.selected, btnDiscover.colorOrig = pos, option, self, 0, "green3"
 				btnDiscover.configure(command=btnDiscover.respond)
 			btnDiscover.plot(x=pos[0], y=pos[1], anchor='c')
 			self.buttonsDrawn.append(btnDiscover)
@@ -1194,9 +1233,10 @@ class GUI:
 			btnTypeConfirm.wait_variable(var)
 			cardName = self.text.get()
 			self.text.delete(0, "end")
-			if cardName in self.Game.RNGPools["Basic and Classic Card Index"].keys():
-				card = self.Game.RNGPools["Basic and Classic Card Index"][cardName](self.Game, initiator.ID)
-				self.Game.Hand_Deck.addCardtoHand(card, initiator.ID)
+			if cardName in self.Game.RNGPools["Basic and Classic Card Index"]:
+				card = self.Game.RNGPools["Basic and Classic Card Index"][cardName]
+				self.Game.fixedGuides.append(card)
+				self.Game.Hand_Deck.addCardtoHand(card, initiator.ID, "CreateUsingType")
 				break
 			else:
 				self.printInfo("Input has NO match with a Basic or Classic card. Do you want to see card names in a certain class?")

@@ -1,7 +1,7 @@
-from Basic import TheCoin
-from CardIndices import *
+from CardPools import *
 import copy
 from numpy.random import shuffle as npshuffle
+import numpy as np
 
 def extractfrom(target, listObject):
 	try: return listObject.pop(listObject.index(target))
@@ -13,11 +13,9 @@ def fixedList(listObject):
 def PRINT(game, string, *args):
 	if game.GUI:
 		if not game.mode: game.GUI.printInfo(string)
-	else:
-		if not game.mode:
-			print("game's guide mode is 0\n", string)
-			
-		
+	elif not game.mode: print("game's guide mode is 0\n", string)
+	
+	
 class Hand_Deck:
 	def __init__(self, Game, deck1=[], deck2=[]): #通过卡组列表加载卡组
 		self.Game = Game
@@ -224,8 +222,10 @@ class Hand_Deck:
 				card = self.decks[ID].pop()
 				mana = card.mana
 		else:
-			if isinstance(card, int): card = self.decks[ID].pop(card)
-			else: card = extractfrom(card, self.decks[ID])
+			if isinstance(card, (int, np.int32, np.int64)):
+				card = self.decks[ID].pop(card)
+			else:
+				card = extractfrom(card, self.decks[ID])
 			PRINT(self.Game, "Hero %d draws %s from the deck"%(ID, card.name))
 			mana = card.mana
 		card.leavesDeck()
@@ -253,7 +253,7 @@ class Hand_Deck:
 			
 	#Will force the ID of the card to change.
 	def addCardtoHand(self, obj, ID, comment="AddRealCard", index=-1):
-		if type(obj) == type([]) or type(obj) == type(np.array([])): #Multiple cards at a time
+		if isinstance(obj, (list, np.ndarray, tuple)): #Multiple cards at a time
 			for card in obj:
 				if self.handNotFull(ID):
 					if comment == "CreateUsingIndex":
@@ -375,7 +375,7 @@ class Hand_Deck:
 				self.Game.sendSignal("CardLeavesHand", card.ID, None, card, 0, "")
 				self.Game.sendSignal("PlayerDiscardsCard", card.ID, None, card, 0, "")
 		else: #Discard a chosen card.
-			if isinstance(card, int):
+			if isinstance(card, (int, np.int32, np.int64)):
 				card = self.hands[ID].pop(card)
 				card.leavesHand()
 			else: card = self.extractfromHand(card)[0]
@@ -397,7 +397,7 @@ class Hand_Deck:
 				self.Game.sendSignal("CardLeavesHand", card.ID, None, card, 0, '')
 			return temp, 0, -2 #-2 means the positioninHand doesn't have real meaning.
 		else:
-			if not isinstance(card, int):
+			if not isinstance(card, (int, np.int32, np.int64)):
 				#Need to keep track of the card's location in hand.
 				for i in range(len(self.hands[card.ID])):
 					if self.hands[card.ID][i] == card:
@@ -420,7 +420,7 @@ class Hand_Deck:
 			for card in temp: card.leavesDeck()
 			return temp, 0, False
 		else:
-			if not isinstance(card, int): card = extractfrom(card, self.decks[card.ID])
+			if not isinstance(card, (int, np.int32, np.int64)): card = extractfrom(card, self.decks[card.ID])
 			else: card = self.decks[ID].pop(card)
 			card.leavesDeck()
 			return card, 0, False
@@ -450,79 +450,7 @@ class Hand_Deck:
 			return game.copiedObjs[self]
 			
 			
-DemonHunterDeck = [ShadowhoofSlayer, ChaosStrike, SightlessWatcher, AldrachiWarblades, CoordinatedStrike, SatyrOverseer, SoulCleave, ChaosNova, GlaiveboundAdept, InnerDemon, 
-				Blur, TwinSlice, Battlefiend, ConsumeMagic, ManaBurn, UrzulHorror, BladeDance, FeastofSouls, Umberwing, EyeBeam, 
-				WrathscaleNaga, IllidariFelblade, RagingFelscreamer, SoulSplit, CommandtheIllidari, WrathspikeBrute, Flamereaper, HulkingOverfiend, UrzulHorror, AltruistheOutcast, 
-				EyeBeam, Nethrandamus, CrimsonSigilRunner, FuriousFelfin, ImmolationAura, Netherwalker, SpectralSight, AshtongueBattlelord, FelSummoner, KaynSunfury, 
-				ImprisonedAntaen, Metamorphosis, SkullofGuldan, WarglaivesofAzzinoth, PriestessofFury, CoilfangWarlord, PitCommander,]
-				
-DruidDeck = [Acornbearer, CrystalPower, CrystalsongPortal, DreamwayGuardians, KeeperStalladris, 
-				Lifeweaver, CrystalStag, BlessingoftheAncients, Lucentbark, TheForestsAid, WorthyExpedition, CrystalMerchant, BEEEES, GardenGnome, AnubisathDefender, 
-				ElisetheEnlightened, OasisSurger, HiddenOasis, Overflow, Embiggen, SecuretheDeck, StrengthinNumbers, Treenforcements, BreathofDreams, Shrubadier, 
-				Aeroponics, EmeraldExplorer, GorutheMightree, YseraUnleashed, RisingWinds, SteelBeetle, WingedGuardian, FungalFortunes, Ironbark, ArchsporeMsshifn, 
-				Bogbeam, ImprisonedSatyr, Germination, Overgrowth, GlowflySwarm, MarshHydra, YsielWindsinger]
-				
-HunterDeck = [RapidFire, Shimmerfly, NineLives, Ursatron, MarkedShot, 
-				HuntingParty, Oblivitron, UnleashtheBeast, VereesaWindrunner, PressurePlate, DesertSpear, HuntersPack, HyenaAlpha, RamkahenWildtamer, SwarmofLocusts, 
-				ScarletWebweaver, WildBloodstinger, DinotamerBrann, CleartheWay, DwarvenSharpshooter, ToxicReinforcements, CorrosiveBreath, PhaseStalker, DivingGryphon, PrimordialExplorer, 
-				Stormhammer, Dragonbane, Veranus, FreshScent, ChopshopCopter, RotnestDrake, Helboar, ImprisonedFelmaw, PackTactics, ScavengersIngenuity, 
-				AugmentedPorcupine, ZixorApexPredator, MokNathalLion, ScrapShot, BeastmasterLeoroxx, NagrandSlam]
 
-MageDeck = [RayofFrost, Khadgar, MagicDartFrog, MessengerRaven, MagicTrick, 
-				ConjurersCalling, KirinTorTricaster, ManaCyclone, PowerofCreation, Kalecgos, AncientMysteries, FlameWard, CloudPrince, ArcaneFlakmage, DuneSculptor, 
-				NagaSandWitch, TortollanPilgrim, RenotheRelicologist, PuzzleBoxofYoggSaron, ArcaneBreath, ElementalAllies, LearnDraconic, VioletSpellwing, Chenvaala, AzureExplorer, 
-				MalygosAspectofMagic, RollingFireball, Dragoncaster, ManaGiant, ArcaneAmplifier, AnimatedAvalanche, TheAmazingReno, Evocation, FontofPower, ApexisSmuggler, 
-				AstromancerSolarian, IncantersFlow, Starscryer, ImprisonedObserver, NetherwindPortal, ApexisBlast, DeepFreeze
-				]
-				
-PaladinDeck = [NeverSurrender, LightforgedBlessing, BronzeHerald, DesperateMeasures, MysteriousBlade, 
-				CalltoAdventure, DragonSpeaker, Duel, CommanderRhyssa, Nozari, BrazenZealot, MicroMummy, SandwaspQueen, SirFinleyoftheSands, Subdue, 
-				SalhetsPride, AncestralGuardian, PharaohsBlessing, TiptheScales, RighteousCause, SandBreath, Sanctuary, BronzeExplorer, SkyClaw, DragonriderTalritha, 
-				LightforgedZealot, NozdormutheTimeless, AmberWatcher, LightforgedCrusader, Shotbot, AirRaid, Scalelord, ImprisonedSungill, AldorAttendant, HandofAdal, 
-				MurgurMurgurgle, LibramofWisdom, UnderlightAnglingRod, AldorTruthseeker, LibramofJustice, LadyLiadrin, LibramofHope]
-				
-PriestDeck = [PowerWordShield, HolySmite, MindVision, PsychicConjurer, Radiance, ShadowWordDeath, ShadowWordPain, HolyNova, PowerInfusion, MindControl, 
-				CircleofHealing, Silence, InnerFire, ScarletSubjugator, KulTiranChaplain, Lightwell, Thoughtsteal, ShadowMadness, Lightspawn, MassDispel, 
-				Mindgames, ShadowWordRuin, CabalShadowPriest, TempleEnforcer, NatalieSeline, EVILConscripter, HenchClanShadequill, UnsleepingSoul, ForbiddenWords, ConvincingInfiltrator, 
-				MassResurrection, LazulsScheme, ShadowyFigure, MadameLazul, CatrinaMuerte, EmbalmingRitual, Penance, SandhoofWaterbearer, Grandmummy, HolyRipple, 
-				WretchedReclaimer, Psychopomp, HighPriestAmet, PlagueofDeath, WhispersofEVIL, EnvoyofLazul, BreathoftheInfinite, MindflayerKaahrj, GraveRune, Chronobreaker, 
-				MurozondtheInfinite, AeonReaver, ClericofScales, DarkProphecy, ImprisonedHomunculus, ReliquaryofSouls, Renew, DragonmawSentinel, SethekkVeilweaver, Apotheosis, 
-				DragonmawOverseer, PsycheSplit, SkeletalDragon, SoulMirror ]
-				
-RogueDeck = [DaringEscape, EVILMiscreant, HenchClanBurglar, TogwagglesScheme, UnderbellyFence, 
-				Vendetta, WagglePick, UnidentifiedContract, HeistbaronTogwaggle, TakNozwhisker, PharaohCat, PlagueofMadness, CleverDisguise, WhirlkickMaster, HookedScimitar, 
-				SahketSapper, BazaarMugger, ShadowofDeath, AnkatheBuried, BloodsailFlybooter, DragonsHoard, NecriumApothecary, Stowaway, Waxadred, CandleBreath, 
-				FlikSkyshiv, Skyvateer, Waxmancy, ShadowSculptor, BlackjackStunner, Spymistress, Ambush, AshtongueSlayer, Bamboozle, DirtyTricks, 
-				ShadowjewelerHanar, Akama, GreyheartSage, CursedVagrant]
-				
-ShamanDeck = [Mutate, SludgeSlurper, SouloftheMurloc, UnderbellyAngler, HagathasScheme, 
-				WalkingFountain, WitchsBrew, Muckmorpher, Scargil, SwampqueenHagatha, TotemicSurge, EVILTotem, SandstormElemental, PlagueofMurlocs, WeaponizedWasp, 
-				SplittingAxe, Vessina, Earthquake, MoguFleshshaper, SurgingTempest, Squallhunter, StormsWrath, LightningBreath, Bandersmosh, CumuloMaximus, 
-				Nithogg, ExplosiveEvolution, EyeoftheStorm, TheFistofRaden, BogstrokClacker, LadyVashj, Marshspawn, SerpentshrinePortal, TotemicReflection, VividSpores, 
-				BoggspineKnuckles, ShatteredRumbler, Torrent, TheLurkerBelow]
-				
-WarlockDeck = [EVILGenius, RafaamsScheme, AranasiBroodmother, PlotTwist, Impferno, 
-				EagerUnderling, DarkestHour, JumboImp, ArchVillainRafaam, FelLordBetrug, PlagueofFlames, SinisterDeal, ExpiredMerchant, EVILRecruiter, NefersetThrasher, 
-				Impbalming, DiseasedVulture, Riftcleaver, DarkPharaohTekahn, RainofFire, NetherBreath, DarkSkies, CrazedNetherwing, AbyssalSummoner, ValdrisFelgorge, 
-				ZzerakutheWarped, FiendishServant, TwistedKnowledge, ChaosGazer, ShadowCouncil, UnstableFelbolt, ImprisonedScrapImp, KanrethadEbonlocke, Darkglare, NightshadeMatron, 
-				TheDarkPortal, HandofGuldan, KelidantheBreaker, EnhancedDreadlord,]
+Default1 = [ElvenArcher, ElvenArcher, ElvenArcher, ElvenArcher, ElvenArcher, ElvenArcher, ElvenArcher, ElvenArcher, ElvenArcher, ]
 
-WarriorDeck = [ImproveMorale, ViciousScraphound, DrBoomsScheme, SweepingStrikes, ClockworkGoblin, 
-				DimensionalRipper, OmegaDevastator, Wrenchcalibur, BlastmasterBoom, TheBoomReaver, IntotheFray, FrightenedFlunky, BloodswornMercenary, LivewireLance, RestlessMummy, 
-				PlagueofWrath, Armagedillo, ArmoredGoon, TombWarden, SkyRaider, Ancharrr, EVILQuartermaster, RammingSpeed, Skybarge, MoltenBreath, 
-				DeathwingMadAspect, BoomSquad, RiskySkipper, BombWrangler, ImprisonedGanarg, SwordandBoard, CorsairCache, Bladestorm, BonechewerRaider, BulwarkofAzzinoth, 
-				WarmaulChallenger, KargathBladefist, ScrapGolem, BloodboilBrute]
-
-MonkDeck = [Resuscitate, ArchoftheTemple, CanewithaWineGourd, MonksApprentice, ShaohaosProtection, EffusiveMists, PurifyingBrew, SwiftBrewmaster, Provoke, SweepingKickFighter, 
-			Liquor, ShadoPanWuKao, XuentheWhiteTiger_Mutable_1, DefenseTechniqueMaster, Transcendance, StaveOff, TouchofKarma, SpiritTether, DrunkenBoxing, OnimaActuary, 
-			SpawnofXuen, QuickSip, PawnofShaohao, ShaohaotheEmperor, InnerPeace, LotusHealer, RushingJadeWind, KunLaiSummitZenAlchemist, FistsoftheHeavens, PandariaGuardian, 
-			MonkDragonKeeper, 
-			]
-			
-			
-Default1 = [EVILConscripter, HenchClanShadequill, MadameLazul, EnvoyofLazul, CrystalPower, Resuscitate, ShaohaosProtection, EffusiveMists, SwiftBrewmaster, Provoke, ZephrystheGreat
-				]
-
-Default2 = [LightningBolt, LightningBolt, Evocation, Evocation, SorcerersApprentice, SorcerersApprentice, SorcerersApprentice, SorcerersApprentice, Tracking, Tracking,
-				MirrorEntity,  ImprisonedFelmaw, ImprisonedSatyr, Chenvaala, KaelthasSunstrider,
-				]
+Default2 = [ElvenArcher, ElvenArcher, ElvenArcher, ElvenArcher, ElvenArcher, ElvenArcher, ElvenArcher, ElvenArcher, ElvenArcher, ]

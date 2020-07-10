@@ -338,7 +338,7 @@ class RNGBranch:
 		else:
 			if game.mode > -1:
 				if game.guides and game.guides[0][1] == "Draw":
-					game.Hand_Deck.drawCard(ID, game.guides.pop(0)[2])
+					game.Hand_Deck.drawCard(ID, game.guides.pop(0))
 				else:
 					if game.mode > 1:
 						if game.largeUnknownDeck(ID): self.cancelBranch()
@@ -371,7 +371,7 @@ class RNGBranch:
 				else: #手牌中有多张时。给定了弃牌范围只有一张的情况已经在上面被排除
 					if game.mode > -1:
 						if game.guides and game.guides[0][1] == "Discard":
-							game.Hand_Deck.discardCard(ID, game.guides.pop(0)[2])
+							game.Hand_Deck.discardCard(ID, game.guides.pop(0))
 						else:
 							if game.mode > 1:
 								inds = indices if lenInd > 0 else range(handSize)
@@ -463,7 +463,7 @@ class Branch:
 		return finalBranches
 		
 	def hasNoRandomness(self):
-		return self.sons == {} and self.game != None
+		return self.sons == {} and self.game
 		
 	#用于结算当前branch所携带的game的评分，并通过计算期望之后把这个branch取消收拢到上一级branch里面
 	def collapseBranch(self): #将这一个分叉连同其siblings（如果有）的评分做汇总

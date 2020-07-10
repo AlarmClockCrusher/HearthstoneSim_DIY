@@ -122,7 +122,7 @@ class ConsumeMagic(Spell):
 		self.effectViable = self.Game.Hand_Deck.outcastcanTrigger(self)
 		
 	def whenEffective(self, target=None, comment="", choice=0, posinHand=-2):
-		if target != None:
+		if target:
 			PRINT(self.Game, "Consume Magic is cast and silences enemy minion %s"%target.name)
 			target.getsSilenced()
 		if posinHand == 0 or posinHand == -1:
@@ -192,17 +192,14 @@ class BladeDance(Spell):
 		minions = curGame.minionsAlive(3-self.ID)
 		if damage > 0 and minions:
 			if curGame.mode == 0:
-				if curGame.guides and curGame.guides[0][1] == "Blade Dance":
-					indices = curGame.guides.pop(0)[2]
-					if indices: targets = [curGame.minions[3-self.ID][i] for i in indices]
-					else: return None
+				if curGame.guides:
+					minions = [curGame.minions[3-self.ID][i] for i in curGame.guides.pop(0)]
 				else:
 					num = min(3, len(minions))
-					targets = npchoice(minions, num, replace=False)
-					indices = [minion.position for minion in targets]
-					curGame.fixedGuides.append(("R", "Blade Dance", tuple(indices)))
-				PRINT(curGame, "Blade Dance is cast and deals {} damage to enemy minions {}".format(damage, targets))
-				self.dealsAOE(targets, [damage]*len(targets))
+					minions = npchoice(minions, num, replace=False)
+					curGame.fixedGuides.append(tuple([minion.position for minion in minions]))
+				PRINT(curGame, "Blade Dance is cast and deals {} damage to enemy minions {}".format(damage, minions))
+				self.dealsAOE(minions, [damage]*len(minions))
 		return None
 		
 		
@@ -288,7 +285,7 @@ class EyeBeam(Spell):
 				self.mana = 1
 				
 	def whenEffective(self, target=None, comment="", choice=0, posinHand=-2):
-		if target != None:
+		if target:
 			damage = (3 + self.countSpellDamage()) * (2 ** self.countDamageDouble())
 			PRINT(self.Game, "Eye Beam deals %d damage to minion %s"%(damage, target.name))
 			self.dealsDamage(target, damage)
@@ -328,7 +325,7 @@ class Trigger_WrathscaleNaga(TriggeronBoard):
 		curGame = self.entity.Game
 		if curGame.mode == 0:
 			if curGame.guides and curGame.guides[0][1] == "Wrathscale Naga":
-				i, where = curGame.guides.pop(0)[2]
+				i, where = curGame.guides.pop(0)
 				if where: enemy = curGame.find(i, where)
 				else: return
 			else:
@@ -337,9 +334,9 @@ class Trigger_WrathscaleNaga(TriggeronBoard):
 					enemy = npchoice(targets)
 					if enemy.type == "Minion": i, where = enemy.position, "minion%d"%enemy.ID
 					else: i, where = enemy.ID, "hero"
-					curGame.fixedGuides.append(("R", "Wrathscale Naga", (i, where)))
+					curGame.fixedGuides.append((i, where))
 				else:
-					curGame.fixedGuides.append(("R", "Wrathscale Naga", (0, "")))
+					curGame.fixedGuides.append((0, ""))
 					return
 			PRINT(curGame, "After friendly minion %s dies, Wrathscale Naga deals 3 damage to random enemy %s"%(target.name, enemy.name))
 			self.entity.dealsDamage(enemy, 1)
@@ -401,7 +398,7 @@ class SoulSplit(Spell):
 		return target.type == "Minion" and "Demon" in target.race and target.ID == self.ID and target.onBoard
 		
 	def whenEffective(self, target=None, comment="", choice=0, posinHand=-2):
-		if target != None and self.Game.space(self.ID) > 0:
+		if target and self.Game.space(self.ID) > 0:
 			PRINT(self.Game, "Soul Split is cast and summons a copy of friendly demon %s"%target.name)
 			Copy = target.selfCopy(self.ID) if target.onBoard else type(target)(self.Game, self.ID)
 			self.Game.summon(Copy, target.position+1, self.ID)
@@ -493,7 +490,7 @@ class Nethrandamus(Minion):
 		curGame = self.Game
 		if curGame.mode == 0:
 			if curGame.guides and curGame.guides[0][1] == "Nethrandamus":
-				minions = curGame.guides.pop(0)[2]
+				minions = curGame.guides.pop(0)
 			else:
 				#假设计数过高，超出了费用范围，则取最高的可选费用
 				cost = self.progress
@@ -516,3 +513,32 @@ class Trigger_Nethrandamus(TriggerinHand):
 		
 	def effect(self, signal, ID, subject, target, number, comment, choice=0):
 		self.entity.progress += 1
+		
+		
+		
+		
+DemonHunterInit_Indices = {"Shadows~Demon Hunter~Spell~0~Blur": Blur,
+							"Shadows~Demon Hunter~Spell~0~Twin Slice": TwinSlice,
+							"Shadows~Demon Hunter~Spell~0~Second Slice~Uncollectible": SecondSlice,
+							"Shadows~Demon Hunter~Minion~1~2~2~Demon~Battlefiend": Battlefiend,
+							"Shadows~Demon Hunter~Spell~1~Consume Magic~Outcast": ConsumeMagic,
+							"Shadows~Demon Hunter~Spell~1~Mana Burn": ManaBurn,
+							"Shadows~Demon Hunter~Minion~1~2~1~Demon~Ur'zul Horror~Deathrattle": UrzulHorror,
+							"Shadows~Demon Hunter~Minion~1~2~1~None~Lost Soul~Uncollectible": LostSoul,
+							"Shadows~Demon Hunter~Spell~1~Blade Dance": BladeDance,
+							"Shadows~Demon Hunter~Spell~2~Feast of Souls": FeastofSouls,
+							"Shadows~Demon Hunter~Weapon~2~1~2~Umberwing~Battlecry": Umberwing,
+							"Shadows~Demon Hunter~Minion~1~1~1~Demon~Felwing~Uncollectible": Felwing,
+							"Shadows~Demon Hunter~Minion~4~4~2~None~Altruis the Outcast~Legendary": AltruistheOutcast,
+							"Shadows~Demon Hunter~Spell~3~Eye Beam~Outcast": EyeBeam,
+							"Shadows~Demon Hunter~Minion~3~3~1~None~Wrathscale Naga": WrathscaleNaga,
+							"Shadows~Demon Hunter~Minion~4~5~3~None~Illidari Felblade~Rush~Outcast": IllidariFelblade,
+							"Shadows~Demon Hunter~Minion~4~4~4~None~Raging Felscreamer~Battlecry": RagingFelscreamer,
+							"Shadows~Demon Hunter~Spell~4~Soul Split": SoulSplit,
+							"Shadows~Demon Hunter~Spell~5~Command the Illidari": CommandtheIllidari,
+							"Shadows~Demon Hunter~Minion~5~2~6~Demon~Wrathspike Brute": WrathspikeBrute,
+							"Shadows~Demon Hunter~Weapon~7~4~3~Flamereaper": Flamereaper,
+							"Shadows~Demon Hunter~Minion~8~5~10~Demon~Hulking Overfiend~Rush": HulkingOverfiend,
+							"Shadows~Demon Hunter~Minion~9~8~8~Dragon~Nethrandamus~Battlecry~Legendary": Nethrandamus,
+							}
+							

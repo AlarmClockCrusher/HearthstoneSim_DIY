@@ -13,10 +13,8 @@ def fixedList(listObject):
 def PRINT(game, string, *args):
 	if game.GUI:
 		if not game.mode: game.GUI.printInfo(string)
-	else:
-		if not game.mode:
-			print("game's guide mode is 0\n", string)
-			
+	elif not game.mode: print("game's guide mode is 0\n", string)
+	
 def copyListDictTuple(obj, recipient):
 	if isinstance(obj, list):
 		objCopy = []
@@ -153,31 +151,51 @@ class Card:
 			return False
 		return True
 		
-	def selectablebySpellandHeroPower(self, subject):
-		return False
-		
-	def selectablebyBattlecry(self, subject):
-		return False
-		
 	def selectablebyBattle(self, subject):
+		if self.type == "Minion":
+			if self.onBoard and self.ID != subject.ID and self.status["Temp Stealth"] + self.status["Immune"] + self.keyWords["Stealth"] < 1:
+				if self.keyWords["Taunt"] > 0 or self.Game.status[subject.ID]["Ignore Taunt"] > 0:
+					return True
+				else:
+					for minion in self.Game.minionsonBoard(self.ID):
+						if minion.keyWords["Taunt"] > 0 and minion.status["Temp Stealth"] + minion.status["Immune"] + minion.keyWords["Stealth"] < 1:
+							PRINT(self.Game, "%s is behind friendly Taunt minions and can't be attacked first."%self.name)
+							return False
+					return True
+		elif self.type == "Hero":
+			if self.onBoard and self.ID != subject.ID and self.status["Temp Stealth"] + self.Game.status[self.ID]["Immune"] < 1:
+				if self.Game.status[subject.ID]["Ignore Taunt"] > 0: return True #如果对方的攻击无论嘲讽，则始终可以被选定
+				else: #如果对方没有无视嘲讽的光环，则需要判定角色是否藏在嘲讽之后
+					for minion in self.Game.minionsonBoard(self.ID):
+						if minion.keyWords["Taunt"] > 0 and minion.status["Temp Stealth"] + minion.status["Immune"] + minion.keyWords["Stealth"] < 1:
+							PRINT(self.Game, "%s is behind friendly Taunt minions and can't be attacked first."%self.name)
+							return False
+					return True
 		return False
 		
-	def targetSelectable(self, target):
-		if self.type == "Power" or self.type == "Spell":
-			return target.selectablebySpellandHeroPower(self)
-		elif self.type == "Minion" or self.type == "Weapon":
-			return target.selectablebyBattlecry(self)
-		return False
-		
+	def canSelect(self, target):
+		if target.type == "Hero":
+			return {"Power": target.onBoard and self.Game.status[target.ID]["Evasive"] < 1 and (self.ID == target.ID or target.status["Temp Stealth"] + self.Game.status[target.ID]["Immune"] < 1),
+					"Spell": target.onBoard and self.Game.status[target.ID]["Evasive"] < 1 and (self.ID == target.ID or target.status["Temp Stealth"] + self.Game.status[target.ID]["Immune"] < 1),
+					"Minion": target.onBoard and (target.ID == self.ID or self.Game.status[target.ID]["Immune"] + target.status["Temp Stealth"] < 1),
+					"Weapon": target.onBoard and (target.ID == self.ID or self.Game.status[target.ID]["Immune"] + target.status["Temp Stealth"] < 1),
+					}[self.type]
+		else: #"Minion"
+			return {"Power": target.onBoard and target.marks["Evasive"] < 1 and (self.ID == target.ID or target.marks["Enemy Evasive"] + target.status["Immune"] + target.keyWords["Stealth"] + target.status["Temp Stealth"] < 1),
+					"Spell": target.onBoard and target.marks["Evasive"] < 1 and (self.ID == target.ID or target.marks["Enemy Evasive"] + target.status["Immune"] + target.keyWords["Stealth"] + target.status["Temp Stealth"] < 1),
+					"Minion": target.onBoard and (target.ID == self.ID or target.status["Immune"] + target.keyWords["Stealth"] + target.status["Temp Stealth"] < 1),
+					"Weapon": target.onBoard and (target.ID == self.ID or target.status["Immune"] + target.keyWords["Stealth"] + target.status["Temp Stealth"] < 1),
+					}[self.type]
+					
 	def selectableEnemyMinionExists(self, choice=0):
 		for minion in self.Game.minionsonBoard(3-self.ID):
-			if self.targetSelectable(minion) and self.targetCorrect(minion, choice):
+			if self.canSelect(minion) and self.targetCorrect(minion, choice):
 				return True
 		return False
 		
 	def selectableFriendlyMinionExists(self, choice=0):
 		for minion in self.Game.minionsonBoard(self.ID):
-			if self.targetSelectable(minion) and self.targetCorrect(minion, choice):
+			if self.canSelect(minion) and self.targetCorrect(minion, choice):
 				return True
 		return False
 		
@@ -185,7 +203,7 @@ class Card:
 		return self.selectableFriendlyMinionExists(choice) or self.selectableEnemyMinionExists(choice)
 		
 	def selectableEnemyExists(self, choice=0):
-		if self.targetSelectable(self.Game.heroes[3-self.ID]) and self.targetCorrect(self.Game.heroes[3-self.ID], choice):
+		if self.canSelect(self.Game.heroes[3-self.ID]) and self.targetCorrect(self.Game.heroes[3-self.ID], choice):
 			return True
 		else:
 			return self.selectableEnemyMinionExists(choice)
@@ -193,11 +211,8 @@ class Card:
 	#There is always a selectable friendly character -- hero.
 	def selectableFriendlyExists(self, choice=0): #For minion battlecries, the friendly hero is always selectable
 		if self.type == "Spell" or self.type == "Power":
-			if self.Game.heroes[self.ID].selectablebySpellandHeroPower(self) and self.targetCorrect(self.Game.heroes[self.ID], choice):
-				return True
-			return self.selectableFriendlyMinionExists(choice)
+			return (self.canSelect(self.Game.heroes[self.ID]) and self.targetCorrect(self.Game.heroes[self.ID])) or self.selectableFriendlyMinionExists(choice)
 		return True
-		
 		
 	def selectableCharacterExists(self, choice=0):
 		return self.selectableFriendlyExists(choice) or self.selectableEnemyExists(choice)
@@ -214,11 +229,10 @@ class Card:
 			elif choice < 0 or choice >= len(self.options):
 				PRINT(self.Game, "Choose One card given an invalid choice {}".format(choice))
 				return False
-		else:
-			choice = 0
-			
+		else: choice = 0
+		
 		PRINT(self.Game, "Verifying the validity of selection. Subject {}, target {} with choice {}".format(self.name, target, choice))
-		if target != None: #指明了目标
+		if target: #指明了目标
 			#在指明目标的情况下，只有抉择牌的选项是合理的，选项需要目标，目标对于这个选项正确，且目标可选时，才能返回正确。
 			if self.needTarget(choice) == False:
 				PRINT(self.Game, "The card doesn't need target.")
@@ -226,7 +240,7 @@ class Card:
 			if self.targetCorrect(target, choice) == False:
 				PRINT(self.Game, "The card is given a wrong target.")
 				return False
-			if self.targetSelectable(target) == False:
+			if self.canSelect(target) == False:
 				PRINT(self.Game, "The target is not selectable to the card.")
 				return False
 			return True
@@ -269,12 +283,12 @@ class Card:
 			
 		damageDealingList = []
 		#如果攻击者是英雄且装备着当前回合打开着的武器，则将攻击的伤害来源视为那把武器。
-		if self.type == "Hero" and self.Game.availableWeapon(self.ID) != None and self.ID == self.Game.turn:
+		if self.type == "Hero" and self.Game.availableWeapon(self.ID) and self.ID == self.Game.turn:
 			damageDealer_attacker = self.Game.availableWeapon(self.ID)
 		else:
 			damageDealer_attacker = self
 		#如果被攻击者是英雄，且装备着当前回合打开着的武器，则将攻击目标造成的伤害来源视为那把武器。
-		if target.type == "Hero" and self.Game.availableWeapon(target.ID) != None and target.ID == self.Game.turn:
+		if target.type == "Hero" and self.Game.availableWeapon(target.ID) and target.ID == self.Game.turn:
 			damageDealer_target = self.Game.availableWeapon(target.ID)
 		else:
 			damageDealer_target = target
@@ -434,17 +448,17 @@ class Card:
 		targets, indices, wheres = [], [], []
 		if comment == "":
 			for ID in range(1, 3):
-				if self.targetSelectable(self.Game.heroes[ID]) and self.targetCorrect(self.Game.heroes[ID], choice):
+				if self.canSelect(self.Game.heroes[ID]) and self.targetCorrect(self.Game.heroes[ID], choice):
 					targets.append(self.Game.heroes[ID])
 					indices.append(ID)
 					wheres.append("hero")
 			for i, minion in enumerate(self.Game.minionsonBoard(1)):
-				if self.targetSelectable(minion) and self.targetCorrect(minion, choice):
+				if self.canSelect(minion) and self.targetCorrect(minion, choice):
 					targets.append(minion)
 					indices.append(i)
 					wheres.append("minion1")
 			for i, minion in enumerate(self.Game.minionsonBoard(2)):
-				if self.targetSelectable(minion) and self.targetCorrect(minion, choice):
+				if self.canSelect(minion) and self.targetCorrect(minion, choice):
 					targets.append(minion)
 					indices.append(i)
 					wheres.append("minion2")
@@ -499,7 +513,7 @@ class Card:
 		#复制一张牌的费用修改情况,移除来自光环影响的费用效果
 		size = len(Copy.manaModifications)
 		for i in range(size):
-			if Copy.manaModifications[size-1-i].source != None:
+			if Copy.manaModifications[size-1-i].source:
 				Copy.manaModifications.pop(size-1-i)
 		return Copy
 		
@@ -520,28 +534,23 @@ class Permanent(Card):
 		self.name = type(self).name
 		self.description = type(self).description
 		self.type = "Permanent"
+		self.race = ""
+		
 		self.onBoard, self.inHand, self.inDeck = False, False, False
 		self.dead = False
 		self.sequence, self.position = -1, -2
-		self.race = ""
-		self.keyWords = {"Taunt": 0,
-						"Divine Shield": 0,
-						"Stealth": 0,
-						"Lifesteal": 0,
-						"Windfury": 0,
-						"Mega Windfury": 0,
-						"Spell Damage": 0,
-						"Charge": 0,
-						"Rush": 0,
-						"Poisonous": 0,
+		self.keyWords = {"Taunt": 0, "Stealth": 0, 
+						"Divine Shield": 0, "Spell Damage": 0,
+						"Lifesteal": 0, "Poisonous": 0,
+						"Windfury": 0, "Mega Windfury": 0,
+						"Charge": 0, "Rush": 0,
 						"Echo": 0
 						}
 		self.marks = {"Sweep": 0,
 						"Evasive": 0, "Enemy Evasive": 0,
 						"Can't Attack": 0, "Can't Attack Hero": 0,
 						"Heal x2": 0, #Crystalsmith Kangor
-						"Power Heal&Dmg x2": 0, #Prophet Velen, Clockwork Automation
-						"Spell Heal&Dmg x2": 0
+						"Spell Heal&Dmg x2": 0, "Power Heal&Dmg x2": 0, #Prophet Velen, Clockwork Automation
 						}
 		self.status = {"Immune": 0,	"Frozen": 0, "Temp Stealth": 0, "Borrowed": 0
 						}
@@ -597,6 +606,16 @@ class Permanent(Card):
 		if hasattr(self, "progress"):
 			PRINT(self.Game, "\tPermanent's progress is currently: %d"%self.progress)
 			
+	def createCopy(self, game):
+		if self in game.copiedObjs: return game.copiedObjs[self]
+		else:
+			Copy = type(self)(game, self.ID)
+			game.copiedObjs[self] = Copy
+			Copy.onBoard, Copy.inHand, Copy.inDeck, Copy.dead = self.onBoard, self.inHand, self.inDeck, self.dead
+			Copy.sequence, Copy.position = self.sequence, self.position
+			Copy.triggersonBoard = [trig.createCopy(game) for trig in self.triggersonBoard]
+			self.assistCreateCopy(Copy)
+			return Copy
 			
 			
 class Minion(Card):
@@ -895,7 +914,7 @@ class Minion(Card):
 	def canAttackTarget(self, target):
 		if self.canAttack() == False:
 			return False
-		if target.selectablebyBattle(self) == False:
+		if not target.selectablebyBattle(self):
 			PRINT(self.Game, "%s is not selectable by attack."%target.name)
 			return False
 		#在actionable为True且目标可选的情况下只用一种情况下随从不能攻击一个角色： 突袭不能攻击英雄。
@@ -958,40 +977,6 @@ class Minion(Card):
 			trigger.disconnect()
 		self.Game.sendSignal("MinionDied", self.Game.turn, None, self, 0, "", 0, triggersAllowed_AfterDied)
 		#MinionDeathResolutionFinished
-		
-	def selectablebySpellandHeroPower(self, subject):
-		if self.onBoard and self.marks["Evasive"] < 1:
-			if self.ID == subject.ID:
-				return True
-			else:
-				if self.marks["Enemy Evasive"] + self.status["Immune"] + self.keyWords["Stealth"] + self.status["Temp Stealth"] < 1:
-					return True
-		return False
-		
-	def selectablebyBattlecry(self, subject):
-		if self.onBoard:
-			if self.ID == subject.ID:
-				return True
-			else:
-				if self.status["Immune"] + self.keyWords["Stealth"] + self.status["Temp Stealth"] < 1:
-					return True
-		return False
-		
-	def selectablebyBattle(self, subject):
-		if self.onBoard and self.ID != subject.ID and self.status["Temp Stealth"] + self.status["Immune"] + self.keyWords["Stealth"] < 1:
-			if self.keyWords["Taunt"] > 0:
-				return True
-			else:
-				if self.Game.status[subject.ID]["Ignore Taunt"] > 0: #如果对方的攻击无论嘲讽，则始终可以被选定
-					return True
-				else: #对方没有无视嘲讽时，需要判定是否一个随从在嘲讽之后
-					for minion in self.Game.minionsonBoard(self.ID):
-						if minion.keyWords["Taunt"] > 0 and minion.selectablebyBattle(subject):
-							PRINT(self.Game, "%s is behind friendly Taunt minions and can't be attacked first."%self.name)
-							return False
-					return True
-		PRINT(self.Game, "%s is a friendly or has Stealth or Immune."%self.name)
-		return False
 		
 	def magnetCombine(self, target):
 	#暂时假设磁力随从如果死亡则不触发磁力。
@@ -1093,18 +1078,18 @@ class Minion(Card):
 		magneticTarget = None
 		if self.magnetic > 0:
 			if self.onBoard:
-				adjacentMinions, distribution = self.Game.adjacentMinions2(self)
-				if distribution == "Minions on Both Sides" and "Mech" in adjacentMinions[1].race:
-					magneticTarget = adjacentMinions[1]
-				elif distribution == "Minions Only on the Right" and "Mech" in adjacentMinions[0].race:
-					magneticTarget = adjacentMinions[0]
+				neighbors, dist = self.Game.adjacentMinions2(self)
+				if dist == 1 and "Mech" in neighbors[1].race:
+					magneticTarget = neighbors[1]
+				elif dist == 2 and "Mech" in neighbors[0].race:
+					magneticTarget = neighbors[0]
 		#使用阶段结束，开始死亡结算。视随从的存活情况决定战吼的触发情况，此时暂不处理胜负问题。
 		self.Game.gathertheDead() #At this point, the minion might be removed/controlled by Illidan/Juggler combo.		
 	#结算阶段
 		if self.magnetic > 0:
 			#磁力相当于伪指向性战吼，一旦指定目标之后，不会被其他扳机改变
 			#磁力随从需要目标和自己都属于同一方,且磁力目标在场时才能触发。
-			if magneticTarget != None and magneticTarget.onBoard and self.ID == magneticTarget.ID:
+			if magneticTarget and magneticTarget.onBoard and self.ID == magneticTarget.ID:
 				#磁力结算会让随从离场，不会触发后续的随从召唤后，打出后的扳机
 				self.magnetCombine(magneticTarget)
 				#磁力随从没有战吼等入场特效，因而磁力结算不会引发死亡，不必进行死亡结算
@@ -1113,7 +1098,7 @@ class Minion(Card):
 			#如果场上有随从可供战吼选择，但是因为免疫和潜行导致打出随从时没有目标，则不会触发随机选择，因为本来就没有目标。
 			#在战吼开始检测之前，如果铜须已经死亡，则其并不会让战吼触发两次。也就是扳机的机制。
 			#同理，如果此时市长已经死亡，则其让选择随机化的扳机也已经离场，所以不会触发随机目标。
-			if target != None:
+			if target:
 				targetHolder = [target]
 				self.Game.sendSignal("BattlecryTargetDecision", self.ID, self, targetHolder, 0, "", choice)
 				if target != targetHolder[0] and self.Game.withAnimation and self.Game.GUI:
@@ -1208,7 +1193,7 @@ class Minion(Card):
 		Copy.activated, Copy.onBoard, Copy.inHand, Copy.inDeck = False, False, False, False
 		size = len(Copy.manaModifications) #去掉牌上的因光环产生的费用改变
 		for i in range(size):
-			if Copy.manaModifications[size-1-i].source != None:
+			if Copy.manaModifications[size-1-i].source:
 				Copy.manaModifications.pop(size-1-i)
 		#在一个游戏中复制出新实体的时候需要把这些值重置
 		Copy.identity = [np.random.rand(), np.random.rand(), np.random.rand()]
@@ -1374,46 +1359,59 @@ class Spell(Card):
 			
 	"""Handle the card being selected and check the validity of selection and target."""
 	def available(self):
-		if self.needTarget():
-			return self.selectableCharacterExists()
-		return True
+		return not self.needTarget() or self.selectableCharacterExists()
 		
 	"""Handle the spell being played by player and cast by other cards."""
 	#用于由其他卡牌释放法术。这个法术会受到风潮和星界密使的状态影响，同时在结算完成后移除两者的状态。
 	#这个由其他卡牌释放的法术不受泽蒂摩的光环影响。
 	#目标随机，也不触发目标扳机。
-	def cast(self, target=None, comment="byOthers"):
+	def cast(self, target=None, comment=""):
+		curGame = self.Game
 		#由其他卡牌释放的法术结算相对玩家打出要简单，只需要结算过载，双生法术， 重复释放和使用后的扳机步骤即可。
 		#因为这个法术是由其他序列产生的，所有结束时不会进行死亡处理。
-		repeatTimes = 2 if self.Game.status[self.ID]["Spells x2"] > 0 else 1
+		repeatTimes = 2 if curGame.status[self.ID]["Spells x2"] > 0 else 1
 		#多次选择的法术，如分岔路口等会有自己专有的cast方法。
-		if self.chooseOne > 0:
-			choice = "ChooseBoth" if self.Game.status[self.ID]["Choose Both"] else nprandint(len(self.options))
-		else: choice = 0
-		if "noTarget" not in comment:
-			#如果法术需要目标，而target已经指定，则遵照已经指定的target进行结算。目前只有沼泽女王哈加莎的恐魔会如此结算。
-			if self.needTarget(choice) and target == None:
-				targets = self.findTargets("Random", choice)[0]
-				target = npchoice(targets)
-				try: PRINT(self.Game, "%s gets random target %s"%(self.name, target.name))
-				except: PRINT(self.Game, "Targeting spell %s has no available target."%self.name)
-		else: target = None
-		if self.Game.withAnimation and self.Game.GUI:
-			self.Game.GUI.updateCardinResolution(self)
-			self.Game.GUI.target = target
-			self.Game.GUI.wait(0.5)
+		if curGame.mode == 0:
+			if curGame.guides:
+				i, where, choice = curGame.guides.pop(0)
+				target = curGame.find(i, where) if where else None
+			else:
+				if self.chooseOne < 1: choice = 0
+				else: choice = "ChooseBoth" if curGame.status[self.ID]["Choose Both"] else nprandint(len(self.options))
+				if target is None: #沼泽女王哈加莎的恐魔是目前唯一的指定发动的
+					if self.needTarget(choice):
+						targets = self.findTargets("", choice)[0]
+						if targets:
+							if "enemyFirst" in comment:
+								enemyID, enemies = 3-self.ID, []
+								enemies = [minion for minion in curGame.minionsonBoard(enemyID) if self.canSelect(minion) and self.targetCorrect(minion, choice)]
+								enemyHero = curGame.heroes[enemyID]
+								if self.canSelect(enemyHero) and self.targetCorrect(enemyHero): enemies.append(enemyHero)
+								target = npchoice(enemies) if enemies else npchoice(targets)
+							else: target = npchoice(targets)
+						else: target = None
+					else: target = None
+				if target:
+					if target.type == "Hero": i, where = target.ID, "hero"
+					else: i, where = target.position, "minion%d"%target.ID
+				else: i, where = 0, ''
+				curGame.fixedGuides.append((i, where, choice))
+		if curGame.withAnimation and curGame.GUI:
+			curGame.GUI.updateCardinResolution(self)
+			curGame.GUI.target = target
+			curGame.GUI.wait(0.5)
 		#在法术要施放两次的情况下，第二次的目标仍然是第一次时随机决定的
 		for i in range(repeatTimes):
 			if self.overload > 0:
-				PRINT(self.Game, "%s is cast and Overloads %d mana crystals."%(self.name, self.overload))
-				self.Game.Manas.overloadMana(self.overload, self.ID)
+				PRINT(curGame, "%s is cast and Overloads %d mana crystals."%(self.name, self.overload))
+				curGame.Manas.overloadMana(self.overload, self.ID)
 			if self.twinSpell > 0: #如果不是从手牌中打出，则不会把双生法术牌置入原来的位置
-				PRINT(self.Game, "Twinspell %s is cast and adds a another copy to player's hand"%self.name)
-				self.Game.Hand_Deck.addCardtoHand(self.twinSpellCopy, self.ID, "CreateUsingType")
+				PRINT(curGame, "Twinspell %s is cast and adds a another copy to player's hand"%self.name)
+				curGame.Hand_Deck.addCardtoHand(self.twinSpellCopy, self.ID, "CreateUsingType")
 			#指向性法术如果没有目标也可以释放，只是可能没有效果而已
 			target = self.whenEffective(target, "byOthers", choice, posinHand=-2)
 		#使用后步骤，但是此时的扳机只会触发星界密使和风潮的状态移除。这个信号不是“使用一张xx牌之后”的扳机。
-		self.Game.sendSignal("SpellBeenCast", self.ID, self, target, 0, "byOthers", choice=0)
+		curGame.sendSignal("SpellBeenCast", self.ID, self, target, 0, "byOthers", choice=0)
 		
 	#泽蒂摩加风潮，当对泽蒂摩使用Mutate之后，Mutate会连续两次都进化3个随从
 	#泽蒂摩是在法术开始结算之前打上标记,而非在连续两次之间进行判定。
@@ -1444,7 +1442,7 @@ class Spell(Card):
 			self.Game.GUI.wait(0.4) #If the target is changed, show 0.4 more seconds
 		else: target = targetHolder[0]
 		
-		if target != None and target.ID == self.ID:
+		if target and target.ID == self.ID:
 			self.Game.Counters.spellsonFriendliesThisGame[self.ID].append(self.index)
 		#Zentimo's effect actually an aura. As long as it's onBoard the moment the spell starts being resolved, 
 		#the effect will last even if Zentimo leaves board early.
@@ -1461,7 +1459,7 @@ class Spell(Card):
 					
 			PRINT(self.Game, "The target for the spell is now {}".format(target))
 			#When the target is an onBoard minion, Zentimo is still onBoard and has adjacent minions next to it.
-			if target != None and target.type == "Minion" and target.onBoard and targetAdjacentMinions > 0 and self.Game.adjacentMinions2(target)[0] != []:
+			if target and target.type == "Minion" and target.onBoard and targetAdjacentMinions > 0 and self.Game.adjacentMinions2(target)[0] != []:
 				targets = self.Game.adjacentMinions2(target)[0]
 				#只对中间的目标随从返回法术释放之后的新目标。
 				#用于变形等会让随从提前离场的法术。需要知道后面的再次生效目标。
@@ -1473,7 +1471,7 @@ class Spell(Card):
 					self.whenEffective(minion, comment, choice, posinHand)
 			else: #The target isn't minion or Zentimo can't apply to the situation. Be the target hero, minion onBoard or inDeck or None.
 				#如果目标不为空而且是在场上的随从，则这个随从的历史记录中会添加此法术的index。
-				if target != None and target.type == "Minion" and target.onBoard:
+				if target and target.type == "Minion" and target.onBoard:
 					target.history["Spells Cast on This"].append(self.index)
 					
 				target = self.whenEffective(target, comment, choice, posinHand)
@@ -1756,7 +1754,7 @@ class HeroPower(Card):
 		self.manaModifications = []
 		
 	def replaceHeroPower(self):
-		if self.Game.powers[self.ID] != None:
+		if self.Game.powers[self.ID]:
 			self.Game.powers[self.ID].disappears()
 			self.Game.powers[self.ID] = None
 		self.Game.powers[self.ID] = self
@@ -1765,7 +1763,8 @@ class HeroPower(Card):
 	def available(self): #只考虑没有抉择的技能，抉择技能需要自己定义
 		if self.heroPowerTimes >= self.heroPowerChances_base + self.heroPowerChances_extra:
 			return False
-		if self.needTarget() and self.findTargets("")[0][0]:
+		if self.needTarget() and not self.findTargets("")[0][0]:
+			print("Hero Power %s needs target"%self.name, self.needTarget(), self.findTargets("")[0])
 			return False
 		return True
 		
@@ -1805,7 +1804,7 @@ class HeroPower(Card):
 			else: target = targetHolder[0]
 			
 			minionsKilled = 0
-			if target != None and target.type == "Minion" and self.Game.status[self.ID]["Power Sweep"] > 0:
+			if target and target.type == "Minion" and self.Game.status[self.ID]["Power Sweep"] > 0:
 				targets = self.Game.adjacentMinions2(target)[0]
 				minionsKilled += self.effect(target, choice)
 				if targets != []:
@@ -1844,7 +1843,6 @@ class HeroPower(Card):
 		for minion in self.Game.minions[self.ID]:
 			if minion.marks["Heal x2"] > 0 or minion.marks["Power Heal&Dmg x2"] > 0:
 				num += 1
-				
 		return num
 		
 	def createCopy(self, game):
@@ -1863,33 +1861,11 @@ class HeroPower(Card):
 			self.assistCreateCopy(Copy)
 			return Copy
 			
-class SteadyShot(HeroPower):
-	mana, name, requireTarget = 2, "Steady Shot", False
-	index = "Hunter-2-Hero Power-Steady Shot"
-	description = "Deal 2 damage to the enemy hero"
-	def returnFalse(self, choice=0):
-		return self.Game.status[self.ID]["Power Can Target Minions"] > 0
-		
-	def targetCorrect(self, target, choice=0):
-		if self.Game.status[self.ID]["Power Can Target Minions"] > 0:
-			return (target.type == "Minion" or target.type == "Hero") and target.onBoard
-		else:
-			return target.type == "Hero" and target.ID != self.ID and target.onBoard
-			
-	def effect(self, target=None, choice=0):
-		damage = (2 + self.Game.status[self.ID]["Power Damage"]) * (2 ** self.countDamageDouble())
-		if target != None:
-			PRINT(self.Game, "Hero Power Steady Shot deals %d damage to the character %s"%(damage, target.name))
-			self.dealsDamage(target, damage)
-		else:
-			PRINT(self.Game, "Hero Power Steady Shot deals %d damage to the enemy hero %s"%(damage, self.Game.heroes[3-self.ID].name))
-			self.dealsDamage(self.Game.heroes[3-self.ID], damage)
-		return 0
-		
+
 		
 class Hero(Card):
 	mana, weapon, description = 0, None, ""
-	Class, name, heroPower, armor = "Neutral", "InnKeeper", SteadyShot, 0
+	Class, name, heroPower, armor = "Neutral", "InnKeeper", None, 0
 	index = ""
 	def __init__(self, Game, ID):
 		self.blank_init(Game, ID)
@@ -1908,7 +1884,7 @@ class Hero(Card):
 		self.attChances_base, self.attChances_extra, self.attTimes = 1, 0, 0
 		self.onBoard, self.inHand, self.inDeck = False, False, False
 		self.dead = False
-		self.heroPower = type(self).heroPower(self.Game, self.ID)
+		self.heroPower = type(self).heroPower(self.Game, self.ID) if type(self).heroPower else None
 		self.keyWords = {"Poisonous": 0} #Just as a placeholder
 		self.status = {"Frozen": 0, "Temp Stealth": 0}
 		self.triggers = {"Discarded": []}
@@ -1944,7 +1920,7 @@ class Hero(Card):
 		
 	def decideAttChances_base(self):
 		weapon = self.Game.availableWeapon(self.ID)
-		self.attChances_base = 2 if weapon != None and weapon.keyWords["Windfury"] > 0 else 1
+		self.attChances_base = 2 if weapon and weapon.keyWords["Windfury"] > 0 else 1
 			
 	def getsFrozen(self):
 		self.status["Frozen"] += 1
@@ -1963,7 +1939,7 @@ class Hero(Card):
 				
 			weapon = self.Game.availableWeapon(self.ID)
 			self.bareAttack, self.attTimes, self.attChances_extra = 0, 0, 0
-			if weapon != None:
+			if weapon:
 				self.attack = self.bareAttack + max(0, weapon.attack)
 				PRINT(self.Game, "Hero %s's attack is now %d+%d"%(self.name, self.bareAttack, weapon.attack))
 			self.decideAttChances_base()
@@ -1985,44 +1961,12 @@ class Hero(Card):
 	def gainTempAttack(self, attackGain):
 		self.attack_bare += attackGain
 		weapon = self.Game.availableWeapon(self.ID)
-		if weapon != None:
-			self.attack = self.attack_bare + max(0, weapon.attack)
-		else:
-			self.attack = self.attack_bare
-			
+		self.attack = self.attack_bare + max(0, weapon.attack) if weapon else self.attack_bare
+		
 	def gainsArmor(self, armor):
 		self.armor += armor
 		
 	"""Handle hero's being selectable by subjects or not. And hero's availability for battle."""
-	def selectablebySpellandHeroPower(self, subject):
-		if self.onBoard and self.Game.status[self.ID]["Evasive"] < 1:
-			if self.ID == subject.ID:
-				return True
-			else:
-				if self.status["Temp Stealth"] + self.Game.status[self.ID]["Immune"] < 1:
-					return True
-		return False
-		
-	def selectablebyBattle(self, subject):
-		if self.onBoard and self.ID != subject.ID and self.status["Temp Stealth"] + self.Game.status[self.ID]["Immune"] < 1:
-			if self.Game.status[subject.ID]["Ignore Taunt"] > 0: #如果对方的攻击无论嘲讽，则始终可以被选定
-				return True
-			else: #如果对方没有无视嘲讽的光环，则需要判定角色是否藏在嘲讽之后
-				for minion in self.Game.minionsonBoard(self.ID):
-					if minion.keyWords["Taunt"] > 0 and minion.selectablebyBattle(subject):
-						PRINT(self.Game, "%s is behind friendly Taunt minions and can't be attacked first."%self.name)
-						return False
-				return True
-		PRINT(self.Game, "%s is a friendly or has Stealth or Immune."%self.name)
-		return False
-		
-	def selectablebyBattlecry(self, subject):
-		if self.onBoard:
-			if self.ID == subject.ID: return True
-			elif self.status["Temp Stealth"] + self.Game.status[self.ID]["Immune"] < 1:
-				return True
-		return False
-		
 	def canAttack(self):
 		if not self.actionable() or self.attack < 1 or self.status["Frozen"] > 0:
 			return False
@@ -2031,12 +1975,7 @@ class Hero(Card):
 		return True
 		
 	def canAttackTarget(self, target):
-		if not self.canAttack():
-			PRINT(self.Game, "Hero can not attack at this point.")
-			return False
-		if target.selectablebyBattle(self) == False:
-			return False
-		return True
+		return self.canAttack() and target.selectablebyBattle(self)
 		
 	#Heroes don't have Lifesteal.
 	def tryLifesteal(self, damage):
@@ -2096,10 +2035,10 @@ class Hero(Card):
 		if self.Game.status[self.ID]["Battlecry x2"] > 0:
 			self.whenEffective(None, "", choice, posinHand)
 		self.whenEffective(None, "", choice, posinHand)
-		if self.weapon != None: #如果英雄牌本身带有武器，如迦拉克隆等。则装备那把武器
+		if self.weapon: #如果英雄牌本身带有武器，如迦拉克隆等。则装备那把武器
 			self.Game.equipWeapon(self.weapon(self.Game, self.ID))
 		weapon = self.Game.availableWeapon(self.ID)
-		if weapon != None and self.ID == self.Game.turn:
+		if weapon and self.ID == self.Game.turn:
 			self.Game.heroes[self.ID].attack = self.Game.heroes[self.ID].attack_bare + max(0, weapon.attack)
 		else: self.Game.heroes[self.ID].attack = self.Game.heroes[self.ID].attack_bare
 		self.Game.heroes[self.ID].decideAttChances_base()
@@ -2118,8 +2057,8 @@ class Hero(Card):
 		#大王和炎魔之王在替换之前被定义，拥有15或者8点生命值。0点护甲值和英雄技能等也已定义完毕。
 		self.Game.heroes[self.ID] = self
 		self.Game.heroes[self.ID].onBoard = True
-		self.heroPower.replaceHeroPower()
-		if self.weapon != None: #如果英雄本身带有装备，则会替换当前的玩家装备（如加拉克苏斯大王）
+		if self.heroPower: self.heroPower.replaceHeroPower()
+		if self.weapon: #如果英雄本身带有装备，则会替换当前的玩家装备（如加拉克苏斯大王）
 			self.Game.equipWeapon(self.weapon(self.Game, self.ID))
 		if fromHeroCard == False: #英雄牌被其他牌打出时不会取消当前玩家的免疫状态
 			#Hero's immune state is gone, except that given by Mal'Ganis
@@ -2178,7 +2117,7 @@ class Weapon(Card):
 		self.triggers = {"Discarded": []}
 		self.overload, self.chooseOne = 0, 0
 		self.onBoard, self.inHand, self.inDeck = False, False, False
-		self.tobeDestroyed = False
+		self.dead = False
 		self.sequence = -1
 		self.deathrattles = []
 		self.triggersonBoard, self.triggersinHand, self.triggersinDeck = [], [], []
@@ -2209,7 +2148,7 @@ class Weapon(Card):
 	def appears(self):
 		#注意，此时武器还不能设为onBoard,因为之后可能会涉及亡语随从为英雄装备武器。
 		#尚不能因为武器标记为onBoard而调用其destroyed。
-		self.inHand, self.inDeck, self.tobeDestroyed = False, False, False
+		self.inHand, self.inDeck, self.dead = False, False, False
 		self.mana = type(self).mana
 		#武器的表面上的场上扳机和亡语都有相同的入场注册方式
 		for trigger in self.triggersonBoard:
@@ -2221,7 +2160,7 @@ class Weapon(Card):
 			value.auraAppears()
 			
 	def setasNewWeapon(self):
-		self.onBoard, self.tobeDestroyed = True, False
+		self.onBoard, self.dead = True, False
 		#因为武器在之前已经被添加到武器列表，所以sequence需要-1，不然会导致错位
 		self.sequence = len(self.Game.minions[1]) + len(self.Game.minions[2]) + len(self.Game.weapons[1]) + len(self.Game.weapons[2]) - 1
 		if self.ID == self.Game.turn:
@@ -2236,7 +2175,7 @@ class Weapon(Card):
 			PRINT(self.Game, "Weapon %s is destroyed"%self.name)
 			if self.keyWords["Windfury"] > 0:
 				self.Game.heroes[self.ID].decideAttChances_base()
-			self.onBoard, self.tobeDestroyed = False, True
+			self.onBoard, self.dead = False, True
 			self.Game.heroes[self.ID].attack = self.Game.heroes[self.ID].attack_bare
 			#移除武器对应的场上扳机，亡语扳机在deathrattles中保存
 			for trigger in self.triggersonBoard:
@@ -2384,6 +2323,6 @@ class ChooseOneOption:
 		return type(self)(recipient)
 		
 	#抉择选项的复制一定是以复制卡牌为前提的，调用此函数时，抉择主体一定已经被复制了
-	def createCopy(self, recipientGame):
-		entityCopy = recipientGame.copiedObjs[self.entity]
+	def createCopy(self, game):
+		entityCopy = game.copiedObjs[self.entity]
 		return type(self)(entityCopy)

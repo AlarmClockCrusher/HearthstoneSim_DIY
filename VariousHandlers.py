@@ -1,4 +1,5 @@
 import numpy as np
+from numpy.random import choice as npchoice
 import copy
 import inspect
 
@@ -12,10 +13,8 @@ def fixedList(listObject):
 def PRINT(game, string, *args):
 	if game.GUI:
 		if not game.mode: game.GUI.printInfo(string)
-	else:
-		if not game.mode:
-			print("game's guide mode is 0\n", string)
-			
+	elif not game.mode: print("game's guide mode is 0\n", string)
+	
 #对卡牌的费用机制的改变	
 #主要参考贴（冰封王座BB还在的时候）：https://www.diyiyou.com/lscs/news/194867.html
 #
@@ -155,7 +154,7 @@ class Manas:
 	def turnEnds(self):
 		for aura in self.CardAuras + self.PowerAuras:
 			if hasattr(aura, "temporary") and aura.temporary:
-				PRINT(self, "{} expires at the end of turn.".format(aura))
+				PRINT(self.Game, "{} expires at the end of turn.".format(aura))
 				aura.auraDisappears()
 		self.calcMana_All()
 		self.calcMana_Powers()
@@ -226,7 +225,7 @@ class ManaModification:
 			
 	def getsRemoved(self):
 		extractfrom(self, self.card.manaModifications)
-		if self.source != None:
+		if self.source:
 			extractfrom((self.card, self), self.source.auraAffected)
 			
 	def selfCopy(self, recipientCard):
@@ -456,12 +455,12 @@ class Secrets:
 					i = curGame.guides.pop(0)
 					if i < 0: break
 				else:
-					secrets = [i for i, card in curGame.Hand_Deck.decks[ID] if "~~Secret" in card.index and not self.sameSecretExists(card, ID)]
+					secrets = [i for i, card in enumerate(curGame.Hand_Deck.decks[ID]) if "~~Secret" in card.index and not self.sameSecretExists(card, ID)]
 					if secrets and self.areaNotFull(ID):
 						i = npchoice(secrets)
-						curGame.fixedGuides.append(('R', "Deploy Secret", i))
+						curGame.fixedGuides.append(i)
 					else:
-						curGame.fixedGuides.append(('R', "Deploy Secret", -1))
+						curGame.fixedGuides.append(-1)
 						break
 				curGame.Hand_Deck.extractfromDeck(i, ID)[0].whenEffective()
 				
@@ -545,41 +544,29 @@ class DmgHandler:
 	#已经测试过Immune的随从在受伤时不会转移给钳嘴龟盾卫
 	#已经测试过圣盾随从在受伤时会转移转移给钳嘴龟盾卫，圣盾似乎只阻挡最后的伤害判定，不负责伤害目标转移
 	def damageTransfer_InitiallyonMinion(self, minion):
-		if minion.type == "Permanent":
-			return minion
+		if minion.type == "Permanent": return minion
 		#This method will never be invoked if the minion is dead already or in deck.
 		else: #minion.type == "Minion"
-			if minion.inHand:
-				return minion
+			if minion.inHand: return minion
 			elif minion.onBoard:
-				if self.ShellfighterExists[minion.ID] <= 0 or minion.status["Immune"] > 0:
+				if self.ShellfighterExists[minion.ID] < 1 or minion.status["Immune"] > 0:
 					return minion #Immune minions won't need to transfer damage
 				else:
-					adjacentMinions, distribution = self.Game.adjacentMinions2(minion)
-					if distribution == "Minions on Both Sides":
-						ShellfighterontheLeft = self.isActiveShellfighter(adjacentMinions[0])
-						ShellfighterontheRight = self.isActiveShellfighter(adjacentMinions[1])
+					neighbors, dist = self.Game.adjacentMinions2(minion)
+					if dist == 1:
+						ShellfighterontheLeft = self.isActiveShellfighter(neighbors[0])
+						ShellfighterontheRight = self.isActiveShellfighter(neighbors[1])
 						#If both sides are active Shellfighters, the early one on board will trigger.
 						if ShellfighterontheLeft and ShellfighterontheRight:
-							if adjacentMinions[0].sequence < adjacentMinions[1].sequence:
-								miniontoTakeDamage = self.leftmostShellfighter(minion)
-							else:
-								miniontoTakeDamage = self.rightmostShellfighter(minion)
+							return self.leftmostShellfighter(minion) if neighbors[0].sequence < neighbors[1].sequence else self.rightmostShellfighter(minion)
 						#If there is only a Shellfighter on the left, find the leftmost Shellfighter
-						elif ShellfighterontheLeft:
-							miniontoTakeDamage = self.leftmostShellfighter(minion)
+						elif ShellfighterontheLeft: return self.leftmostShellfighter(minion)
 						#If there is only a Shellfighter on the right, find the rightmost Shellfighter
-						else:
-							miniontoTakeDamage = self.rightmostShellfighter(minion)
-							
-					elif distribution == "Minions Only on the Left":
-						miniontoTakeDamage = self.leftmostShellfighter(minion)
-					elif distribution == "Minions Only on the Right":
-						miniontoTakeDamage = self.rightmostShellfighter(minion)
-					elif distribution == "No Adjacent Minions":
-						miniontoTakeDamage = minion
+						else: return self.rightmostShellfighter(minion)
 						
-					return miniontoTakeDamage
+					elif dist < 0: return self.leftmostShellfighter(minion)
+					elif dist == 2: return self.rightmostShellfighter(minion)
+					else: return minion
 					
 	def damageTransfer_InitiallyonHero(self, hero):
 		if (self.RamshieldExists[hero.ID] < 1 and not self.scapegoatforHero[hero.ID]) or self.Game.status[hero.ID]["Immune"] > 0:
@@ -741,16 +728,16 @@ class Discover:
 			discover_branch[key+initiator.name+"_chooses_"+option.name+";"] = game
 			
 	def startDiscover(self, initiator, info):
-		if self.Game.GUI != None:
+		if self.Game.GUI:
 			self.initiator = initiator
 			self.Game.GUI.update()
 			self.Game.GUI.waitforDiscover(info)
 			self.initiator, self.Game.options = None, []
 			
 	def typeCardName(self, initiator):
-		if self.Game.GUI != None:
+		if self.Game.GUI:
 			self.initiator = initiator
-			PRINT(self, "Start to type the name of a card you want")
+			PRINT(self.Game, "Start to type the name of a card you want")
 			self.Game.GUI.update()
 			self.Game.GUI.wishforaCard(initiator)
 			self.Game.options = []
